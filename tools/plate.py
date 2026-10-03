@@ -54,9 +54,8 @@ def line_intersect(p, d, q, e):
 
 def bevel(upper):
     """Fill the notch between the upper key and the old plate's straight inner
-    edge: one level line from the key area's corner across to that edge.
-    (Carrying the key's top edge on instead would pass 0.26 mm from the right
-    OLED header.)"""
+    edge: the key area's top edge carries straight on to that edge (passing
+    2.6 mm below the right OLED header's pins)."""
     cx, cy = upper
     ux, uy = thumbs.down(DEG)             # down the stack of inner keys
     vx, vy = -uy, ux                      # across the key, toward the old outline
@@ -68,7 +67,8 @@ def bevel(upper):
     p = pcbnew.SHAPE_POLY_SET()
     p.NewOutline()
     ox, oy = OLD_CORNER[0] + 0.3, OLD_CORNER[1] + 0.2     # overlap the old plate so the union has no seam
-    for x, y in (a, (ox, a[1]), (ox, oy), d):
+    e = (ox, a[1] + (ox - a[0]) * vy / vx)                 # the top edge, carried on
+    for x, y in (a, e, (ox, oy), d):
         p.Append(MM(x), MM(y))
     return p
 

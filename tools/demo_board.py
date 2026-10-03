@@ -2,8 +2,9 @@
 exist (sockets, LEDs, diodes, controller, jacks, reset buttons), switches and
 KLP Lame keycaps on top, the trackpoint's sensor, nub and driver.
 
-usage: demo_board.py IN OUT MARBASTLIB_DIR KBD_DIR PACKAGES3D_DIR STANDIN_DIR KLP_DIR [bare]
-       "bare" leaves out the switches and keycaps, to show the board itself.
+usage: demo_board.py IN OUT MARBASTLIB_DIR KBD_DIR PACKAGES3D_DIR STANDIN_DIR KLP_DIR [bare] [nooled]
+       "bare" leaves out the switches and keycaps, to show the board itself;
+       "nooled" leaves out the OLED modules and their headers.
 """
 import os
 import sys
@@ -33,7 +34,8 @@ def keycap(ref):
     return f"Choc_Stem_Choc_Size_{kind}.step"
 
 
-def main(src, dst, marbast, kbd, pkg3d, standin, klp, bare=""):
+def main(src, dst, marbast, kbd, pkg3d, standin, klp, *opts):
+    bare = "bare" in opts
     board = pcbnew.LoadBoard(src)
     subst = {
         "${KICAD7_3RD_PARTY}/3dmodels/com_github_ebastler_marbastlib": os.path.join(marbast, "3dmodels"),
@@ -47,6 +49,8 @@ def main(src, dst, marbast, kbd, pkg3d, standin, klp, bare=""):
         # Models() hands out copies, so rebuild the list with the paths resolved.
         models = list(f.Models())
         f.Models().clear()
+        if "nooled" in opts and f.GetReference() in ("J2", "J4"):
+            continue
         for m in models:
             for a, b in subst.items():
                 if m.m_Filename.startswith(a):
