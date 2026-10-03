@@ -61,9 +61,9 @@ def main(board):
                                capture_output=True, text=True)
             for line in r.stdout.splitlines():
                 if line.startswith(("GND ", "GNDA ")):
-                    net, start = line.split()
-                    if (net, start, "any") not in failed | tried:
-                        todo.append((net, start, "any"))
+                    net, start, goal = line.split()
+                    if (net, start, goal) not in failed | tried:
+                        todo.append((net, start, goal))
         if not todo:
             if not refill:          # confirm against a fresh pour before stopping
                 refill = True

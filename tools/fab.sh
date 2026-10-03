@@ -15,5 +15,6 @@ export_board() {  # name board
   echo "fab/$1.zip: $(unzip -l "fab/$1.zip" | tail -1)"
 }
 export_board pcb "pcb/corne choc.kicad_pcb"
-export_board plate "pcb/corne choc plate.kicad_pcb"     # one design; flip it for the left half
+export_board plate-left "pcb/corne choc plate.kicad_pcb"           # drawn as a right half; flip it
+export_board plate-right "pcb/corne choc plate right.kicad_pcb"    # clears the trackpoint sensor
 export_board bottom "pcb/bottom.kicad_pcb"

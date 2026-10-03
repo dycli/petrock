@@ -1,9 +1,9 @@
 """Put an SK8707-01 trackpoint at the right half's outer thumb key.
 
 Removes SW40, its diode D40 and its LED52 (hidden under the sensor; the RGB chain
-is bridged). The sensor sits flat on the front at SW40's centre, its stem coming
-up through SW40's switch-plate opening. The driver sits flat on the back,
-directly beneath. Its PS/2 lines go to controller pins 11/12 (GP8/GP9).
+is bridged). The sensor sits flat on the front over SW40's place, its stem
+STEM_DROP below SW40's centre, and comes up through the plate's opening. The
+driver sits flat on the back, directly beneath. Its PS/2 lines go to controller pins 11/12 (GP8/GP9).
 
 Positions are taken relative to SW40 as found on the board, so this works on
 the upstream board or on one whose right half has been shifted.
@@ -16,8 +16,13 @@ import pcbnew
 MM = pcbnew.FromMM
 LIB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib", "sk8707.pretty")
 
-SENSOR_ROT = 180.0               # pad edge toward the controller
-DRIVER_OFFSET = (0.0, -1.37)     # from SW40's centre, on the back, sensor-link edge up; corner clears the board edge by 0.5 mm
+# The sensor board covers SW40's centre -7.45..+10.84 mm (tools/widen.py shapes
+# the edge round that). Pad edge up puts the stem STEM_DROP below SW40's centre,
+# closer to the thumb.
+SENSOR_ROT = 180.0               # pad edge up
+STEM_DROP = 10.84 - 7.45
+DRIVER_ROT = 0.0                 # sensor-link edge up, beside the sensor's pads
+DRIVER_OFFSET = (0.0, -1.37)     # from SW40's centre, on the back; clears the diagonal edge
 UPSTREAM_SW40 = (206.71, 117.52) # for the few upstream track coordinates below
 DRIVER_NETS = {"1": "GNDA", "2": "TP_DATA", "3": "TP_CLK", "5": "VDD"}   # 4 RST, 6-8 buttons: unused
 CONTROLLER_NETS = {"11": "TP_DATA", "12": "TP_CLK"}                      # U2 pins 11/12 = GP8/GP9
@@ -77,9 +82,10 @@ def main(src, dst):
         (f,) = index[ref]
         return f
 
-    stem = mm(one("SW40").GetPosition())
-    shift = (round(stem[0] - UPSTREAM_SW40[0], 2), round(stem[1] - UPSTREAM_SW40[1], 2))
-    driver_centre = (stem[0] + DRIVER_OFFSET[0], stem[1] + DRIVER_OFFSET[1])
+    key = mm(one("SW40").GetPosition())
+    shift = (round(key[0] - UPSTREAM_SW40[0], 2), round(key[1] - UPSTREAM_SW40[1], 2))
+    stem = (key[0], key[1] + STEM_DROP)
+    driver_centre = (key[0] + DRIVER_OFFSET[0], key[1] + DRIVER_OFFSET[1])
 
     for ref in ("SW40", "D40", "LED52"):
         board.Remove(one(ref))
@@ -113,6 +119,7 @@ def main(src, dst):
     driver = load("SK8707-01_driver")
     driver.SetReference("TP2")
     driver.SetValue("SK8707-01 driver")
+    driver.SetOrientationDegrees(DRIVER_ROT)
     driver.SetPosition(V(*driver_centre))
     for p in driver.Pads():
         name = DRIVER_NETS.get(p.GetNumber()) or LINK_NETS.get(p.GetNumber())
@@ -140,12 +147,19 @@ def main(src, dst):
     dead = {(up(a), up(b)) for a, b in (((191.81, 121.98), (196.69, 121.98)), ((196.69, 121.98), (196.73, 121.94)),
                                        ((196.73, 121.94), (197.04, 121.94)), ((197.04, 121.94), (197.51, 121.47)),
                                        ((197.51, 121.47), (203.99, 121.47)))}
-    for t in list(board.GetTracks()):
-        if t.GetNetname() != CHAIN_IN:
-            continue
+    # Back copper just below the driver's host pins, so they have room to get
+    # out; the router puts back whatever this cuts.
+    escape = pcbnew.BOX2I(V(cx - 11.5, cy + 6.0), V(23.0, 4.0))
+    doomed = []
+    for t in board.GetTracks():
         ends = (mm(t.GetStart()), mm(t.GetEnd()))
-        if t.GetClass() == "PCB_VIA" and ends[0] == up((196.73, 121.94)) or ends in dead or ends[::-1] in dead:
-            board.Remove(t)
+        if t.GetNetname() == CHAIN_IN and (t.GetClass() == "PCB_VIA" and ends[0] == up((196.73, 121.94))
+                                           or ends in dead or ends[::-1] in dead):
+            doomed.append(t)
+        elif t.IsOnLayer(pcbnew.B_Cu) and t.HitTest(escape, False):
+            doomed.append(t)
+    for t in doomed:
+        board.Remove(t)
 
     board.Save(dst)
 

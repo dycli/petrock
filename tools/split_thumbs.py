@@ -1,7 +1,7 @@
 """Split each half's inner 1.5u thumb key into two 1u keys at the same angle.
 
-The 1.5u key becomes a 1u key moved down its long axis so its bottom end stays
-put; a new 1u key goes above it at 1u pitch. Each key gets a diode and a
+The 1.5u key becomes a 1u key on the thumb arc (tools/thumbs.py), turned like
+the other thumb keys; a new 1u key goes one row above it. Each key gets a diode and a
 per-key LED placed as on the neighbouring 1u thumb key (the template). The new
 key uses its row's spare column (col2) and its LED is inserted in the RGB chain
 right after the moved key's LED.
@@ -14,16 +14,17 @@ import sys
 
 import pcbnew
 
+import thumbs
+
 MM = pcbnew.FromMM
-PITCH = 18.0                  # 1u choc spacing along the key's long axis
 EDGE_CLEAR = 0.55             # board rule is 0.5
 
 HALVES = {
     # old key, its LED and diode; template 1u key, LED, diode; new refs; new key's column; chain/power/ground nets
-    "right": dict(key="SW42", led="LED54", diode="D42", tkey="SW41", tled="LED53", tdiode="D41",
+    "right": dict(half="right", key="SW42", led="LED54", diode="D42", tkey="SW41", tled="LED53", tdiode="D41",
                   new_key="SW44", new_led="LED56", new_diode="D46", col="col2_r", row="row3_r",
                   power="Net-(D44-K)", ground="GNDA"),
-    "left": dict(key="SW21", led="LED27", diode="D21", tkey="SW20", tled="LED26", tdiode="D20",
+    "left": dict(half="left", key="SW21", led="LED27", diode="D21", tkey="SW20", tled="LED26", tdiode="D20",
                  new_key="SW43", new_led="LED55", new_diode="D45", col="col2", row="row3",
                  power="Net-(D43-K)", ground="GND"),
 }
@@ -123,13 +124,12 @@ def split(board, index, h):
     one = lambda ref: index[ref][0]
     old, led, diode = one(h["key"]), one(h["led"]), one(h["diode"])
     tkey, tled, tdiode = one(h["tkey"]), one(h["tled"]), one(h["tdiode"])
-    deg = old.GetOrientationDegrees()
+    # Arc positions (tools/thumbs.py), moved by however far this half has been shifted.
     cx, cy = pos(old)
-    ux, uy = rot(1, 0, deg)               # the key's long axis
-    if uy < 0:
-        ux, uy = -ux, -uy                 # "down" = toward the bottom edge
-    lower = (cx + (PITCH * 1.5 - PITCH) / 2 * ux, cy + (PITCH * 1.5 - PITCH) / 2 * uy)
-    upper = (lower[0] - PITCH * ux, lower[1] - PITCH * uy)
+    up_x, up_y = thumbs.OLD_INNER[h["half"]]
+    sx, sy = cx - up_x, cy - up_y
+    (lx, ly), (tx, ty), deg = thumbs.inner_keys(h["half"])
+    lower, upper = (lx + sx, ly + sy), (tx + sx, ty + sy)
 
     led_off, diode_off = local_offset(tkey, tled), local_offset(tkey, tdiode)
     col_net, anode_net = old.Pads()[0], None

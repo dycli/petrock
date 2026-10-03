@@ -1,7 +1,8 @@
-"""For each ground net, print one pad from every group of copper (pads, tracks,
-vias, zone islands) that isn't connected to the net's largest group.
+"""For each ground net and every group of copper (pads, tracks, vias, zone
+islands) that isn't connected to the net's largest group, print the group's pad
+nearest that largest group, and the largest group's pad nearest it.
 
-usage: islands.py BOARD NET...   prints "NET X,Y,LAYERS" lines
+usage: islands.py BOARD NET...   prints "NET X,Y,LAYERS X,Y,LAYERS" lines
 """
 import os
 import sys
@@ -63,14 +64,21 @@ def groups(board, net):
     return sorted(comp.values(), key=len, reverse=True)
 
 
+def endpoint(p):
+    pos = p.GetPosition()
+    layers = "".join(c for c, l in (("F", pcbnew.F_Cu), ("B", pcbnew.B_Cu)) if p.IsOnLayer(l))
+    return f"{pcbnew.ToMM(pos.x):.4f},{pcbnew.ToMM(pos.y):.4f},{layers}"
+
+
 def main(path, nets):
     board = pcbnew.LoadBoard(path)
     for net in nets:
-        for g in groups(board, net)[1:]:
-            p = g[0]
-            pos = p.GetPosition()
-            layers = "".join(c for c, l in (("F", pcbnew.F_Cu), ("B", pcbnew.B_Cu)) if p.IsOnLayer(l))
-            print(f"{net} {pcbnew.ToMM(pos.x):.4f},{pcbnew.ToMM(pos.y):.4f},{layers}")
+        gs = groups(board, net)
+        for g in gs[1:]:
+            # Aim at the main group itself: a route to "any" copper can end on the island's own.
+            p, q = min(((p, q) for p in g for q in gs[0]),
+                       key=lambda pq: (pq[0].GetPosition() - pq[1].GetPosition()).EuclideanNorm())
+            print(f"{net} {endpoint(p)} {endpoint(q)}")
 
 
 if __name__ == "__main__":

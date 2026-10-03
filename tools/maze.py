@@ -320,15 +320,19 @@ def main(src, dst, net, width, start_spec, goal_spec):
         near |= (yy - r) ** 2 + (xx - c) ** 2 <= (PAD_ESCAPE / CELL) ** 2
     for l in LAYERS:
         blocked[l] &= ~(grid.relaxable & near & ~others[l])
-    # Goal: the goal point's own copper island only (same-net cells around it).
+    # Goal: for "any", the net's copper not already touching the start; otherwise
+    # the goal point and the copper it sits on, so a route stops where it first
+    # reaches that copper instead of running alongside it to the exact point.
     goal = {l: np.zeros((grid.h, grid.w), bool) for l in (0, 1)}
     if nearest:
         for l in (0, 1):
             goal[l] = target[LAYERS[l]] & ~island(target[LAYERS[l]], sr, sc)
     else:
         for ch in gl:
-            goal[lmap[ch]][gr, gc] = True
-            blocked[LAYERS[lmap[ch]]][gr, gc] = False
+            l = lmap[ch]
+            goal[l] = island(target[LAYERS[l]], gr, gc) & ~island(target[LAYERS[l]], sr, sc)
+            goal[l][gr, gc] = True
+            blocked[LAYERS[l]][gr, gc] = False
     if os.environ.get("MAZE_DEBUG"):
         dump(os.environ["MAZE_DEBUG"], blocked[LAYERS[0]], blocked[LAYERS[1]], via_blocked, (sr, sc), (gr, gc), goal)
     path = astar(grid, [blocked[LAYERS[0]], blocked[LAYERS[1]]], via_blocked, start, goal,
@@ -340,7 +344,7 @@ def main(src, dst, net, width, start_spec, goal_spec):
     # Real coordinates for every corner; the ends snap to the exact start/goal points.
     runs = [(layer, [grid.xy(p[1], p[2]) for p in pts]) for layer, pts in runs]
     runs[0][1][0] = (sx, sy)
-    if not nearest:
+    if not nearest and path[-1][1:] == (gr, gc):
         runs[-1][1][-1] = (gx, gy)
     for i, (layer, pts) in enumerate(runs):
         for a, b in zip(pts, pts[1:]):

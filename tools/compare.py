@@ -1,4 +1,4 @@
-"""Before/after drawing: upstream outline and keys (grey, dashed) under v2's
+"""Before/after drawing: upstream outline and keys (grey, dashed) under v2.1's
 outline and keys. The upstream right half is shifted like tools/widen.py does."""
 import math
 import os
@@ -60,7 +60,7 @@ def svg(before, after, out):
     for p in before[0]:
         poly(p, 'fill="none" stroke="#e8a33a" stroke-width="3" stroke-dasharray="14,8"')
     keys(before[1], 'fill="none" stroke="#e8a33a" stroke-width="2" stroke-dasharray="8,6"')
-    lines.append(f'<text x="{4 * s}" y="{9 * s}" font-size="{5 * s}">Corne Choc: holykeebs original (orange, dashed) vs v2</text>')
+    lines.append(f'<text x="{4 * s}" y="{9 * s}" font-size="{5 * s}">Corne Choc: holykeebs original (orange, dashed) vs v2.1</text>')
     lines.append(f'<text x="{4 * s}" y="{15 * s}" font-size="{3.2 * s}" fill="#555">'
                  'Wider inner edge with jacks at the top, split inner thumb keys, peaked top edge, trackpoint (red) at the right outer thumb.</text>')
     lines.append("</svg>")

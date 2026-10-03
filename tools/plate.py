@@ -1,7 +1,8 @@
-"""Switch plate for the split inner thumb keys (one design, flipped for the left half).
+"""Switch plates for the split inner thumb keys: one design, flipped for the left
+half, and a copy for the right half that also clears the trackpoint sensor.
 
 Replaces the inner 1.5u opening with two 1u openings at the new key centres and
-grows the outline to cover them, without reaching past the PCB's angled edge.
+grows the outline to cover them and to follow the PCB's edge round the thumbs.
 The plate frame is the upstream PCB's right-half frame shifted by PLATE_DX.
 """
 import math
@@ -10,14 +11,15 @@ import sys
 
 import pcbnew
 
+import thumbs
+
 MM = pcbnew.FromMM
 PLATE_DX = -4.0
 KEY_1_5U = "SW21"        # in the plate file
 TEMPLATE_1U = "SW20"
-# Upstream-frame centres of the two 1u keys (tools/split_thumbs.py, right half).
-OLD = (166.0625, 123.32)
-DEG = -60.0
+LOWER, UPPER, DEG = thumbs.inner_keys("right")     # upstream frame
 PITCH = 18.0
+SENSOR_MARGIN = 0.3      # plate opening round the trackpoint sensor board (it is soldered in place)
 MARGIN = 1.0             # plate beyond each key's 18 x 17 mm pitch box
 OLD_CORNER = (167.81, 104.03)   # upstream plate: foot of the inner straight edge
 # Peaked top edge (tools/top_edge.py), in the plate frame: from the plate's own
@@ -32,12 +34,7 @@ def rot(x, y, deg):
 
 
 def key_centres():
-    ux, uy = rot(1, 0, DEG)
-    if uy < 0:
-        ux, uy = -ux, -uy
-    lower = (OLD[0] + PITCH * 0.25 * ux, OLD[1] + PITCH * 0.25 * uy)
-    upper = (lower[0] - PITCH * ux, lower[1] - PITCH * uy)
-    return [(x + PLATE_DX, y) for x, y in (lower, upper)]
+    return [(x + PLATE_DX, y) for x, y in (LOWER, UPPER)]
 
 
 def box(cx, cy, w, h, deg):
@@ -61,13 +58,11 @@ def bevel(upper):
     (Carrying the key's top edge on instead would pass 0.26 mm from the right
     OLED header.)"""
     cx, cy = upper
-    ux, uy = rot(1, 0, DEG)
-    if uy < 0:
-        ux, uy = -ux, -uy
+    ux, uy = thumbs.down(DEG)             # down the stack of inner keys
     vx, vy = -uy, ux                      # across the key, toward the old outline
     if vx < 0:
         vx, vy = -vx, -vy
-    hl, hw = PITCH / 2 + MARGIN, 17 / 2 + MARGIN
+    hl, hw = thumbs.ROW_PITCH / 2 + MARGIN, PITCH / 2 + MARGIN
     a = (cx - hl * ux + hw * vx, cy - hl * uy + hw * vy)     # key area corner nearest the old edge
     d = line_intersect(a, (ux, uy), OLD_CORNER, (-vx, -vy))  # down the key side to the old diagonal edge
     p = pcbnew.SHAPE_POLY_SET()
@@ -93,27 +88,53 @@ def peak(plate):
     plate.BooleanSubtract(polygon(PEAK + [(x1, 0.0), (x0, 0.0)]))
 
 
-def pcb_outline(path):
-    """The edited PCB's right-half outline, moved into the plate frame."""
+def follow_bottom(plate, clip):
+    """Grow the plate to the PCB's redrawn edge round the thumb keys and the
+    trackpoint (tools/widen.py), so the two stay flush there."""
+    # PCB-frame x range: the inner edge to just past the diagonal's top end;
+    # y range: below the inner mounting hole, down past the lowest point.
+    x0, x1 = 150.0 - RIGHT_DX + PLATE_DX, 245.0 - RIGHT_DX + PLATE_DX
+    band = polygon([(x0, 112.0), (x1, 112.0), (x1, 141.0), (x0, 141.0)])
+    band.BooleanIntersection(clip)
+    plate.BooleanAdd(band)
+
+
+def pcb_shapes(path):
+    """The edited PCB's right-half outline and the trackpoint sensor board
+    grown by SENSOR_MARGIN, both moved into the plate frame."""
     pcb = pcbnew.LoadBoard(path)
     out = pcbnew.SHAPE_POLY_SET()
     pcb.GetBoardPolygonOutlines(out, False)
     right = max(range(out.OutlineCount()), key=lambda i: out.Outline(i).BBox().Centre().x)
     poly = pcbnew.SHAPE_POLY_SET()
     poly.AddOutline(out.Outline(right))
-    poly.Move(pcbnew.VECTOR2I(MM(-RIGHT_DX + PLATE_DX), 0))
-    return poly
+    (tp,) = [f for f in pcb.GetFootprints() if f.GetReference() == "TP1"]
+    (body,) = [g.GetBoundingBox() for g in tp.GraphicalItems()        # the sensor board
+               if g.GetLayer() == pcbnew.F_Fab and g.GetClass() == "PCB_SHAPE" and g.GetShapeStr() == "Rect"]
+    x0, y0, x1, y1 = body.GetLeft(), body.GetTop(), body.GetRight(), body.GetBottom()
+    sensor = pcbnew.SHAPE_POLY_SET()
+    sensor.NewOutline()
+    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+        sensor.Append(x, y)
+    sensor.Inflate(MM(SENSOR_MARGIN), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, MM(0.01))
+    for p in (poly, sensor):
+        p.Move(pcbnew.VECTOR2I(MM(-RIGHT_DX + PLATE_DX), 0))
+    return poly, sensor
 
 
-def main(src, pcb_path, dst):
-    clip = pcb_outline(pcb_path)
+def main(src, pcb_path, dst, dst_right):
+    clip, sensor = pcb_shapes(pcb_path)
     board = pcbnew.LoadBoard(src)
-    old, tmpl = None, None
+    old, tmpl, slot = None, None, None
+    tx, ty, _ = thumbs.HALVES["right"]["outer"]          # the trackpoint's key slot
     for f in board.GetFootprints():
+        x, y = pcbnew.ToMM(f.GetPosition().x), pcbnew.ToMM(f.GetPosition().y)
         if f.GetReference() == KEY_1_5U:
             old = f
         elif f.GetReference() == TEMPLATE_1U:
             tmpl = f
+        elif abs(x - tx - PLATE_DX) < 0.05 and abs(y - ty) < 0.05:
+            slot = f
     outline = pcbnew.SHAPE_POLY_SET()
     board.GetBoardPolygonOutlines(outline, False)
     plate = pcbnew.SHAPE_POLY_SET()
@@ -132,6 +153,7 @@ def main(src, pcb_path, dst):
     board.Remove(old)
     plate.BooleanAdd(bevel(centres[1]))
     peak(plate)
+    follow_bottom(plate, clip)
     plate.BooleanIntersection(clip)             # never past the PCB's edge
     for d in [d for d in board.GetDrawings() if d.GetLayer() == pcbnew.Edge_Cuts]:
         board.Remove(d)
@@ -142,9 +164,20 @@ def main(src, pcb_path, dst):
     s.SetFilled(False)
     board.Add(s)
     board.Save(dst)
+    # The right half's plate also clears the trackpoint sensor, which stands
+    # taller than the gap under the plate: a cut-out of its own, like the
+    # switch holes (a hole in the outline polygon gets stored with a slit).
+    o = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_POLY)
+    o.SetPolyShape(sensor)
+    o.SetLayer(pcbnew.Edge_Cuts)
+    o.SetWidth(MM(0.05))
+    o.SetFilled(False)
+    board.Add(o)
+    board.Remove(slot)                          # its switch hole lies inside the sensor opening
+    board.Save(dst_right)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], sys.argv[3])   # upstream plate, edited PCB, output
+    main(*sys.argv[1:5])   # upstream plate, edited PCB, left plate (flipped), right plate
     sys.stdout.flush()
     os._exit(0)

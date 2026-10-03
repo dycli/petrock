@@ -1,5 +1,5 @@
-"""Simple VRML stand-in models for the demo renders: a Choc keycap, the
-trackpoint nub, and the SK8707 sensor and driver boards."""
+"""Simple VRML stand-in models for the demo renders: the trackpoint nub, and
+the SK8707 sensor and driver boards."""
 import math
 import os
 import sys
@@ -38,7 +38,6 @@ Shape {{ appearance Appearance {{ material Material {{ diffuseColor {c} specular
 
 
 os.makedirs(OUT, exist_ok=True)
-box(f"{OUT}/keycap.wrl", 17.5, 16.5, 2.4, (0.93, 0.93, 0.91), z0=8.2)     # sits on the switch stem
 box(f"{OUT}/sensor.wrl", 13.2, 18.29, 0.8, (0.12, 0.25, 0.65))           # blue Sprintek sensor board
 cylinder(f"{OUT}/nub.wrl", 3.5, 2.6, (0.80, 0.08, 0.08), z0=0.8 + 2.4 - 0.6)  # red cap over the stem
 box(f"{OUT}/driver.wrl", 23.0, 14.5, 1.0, (0.12, 0.25, 0.65))            # blue driver board

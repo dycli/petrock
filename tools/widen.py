@@ -1,7 +1,7 @@
 """Widen both halves along their inner edge and move the TRRS jacks to the top.
 
-Only the straight part of the inner edge moves out; the stock angled edge below
-it, which the inner thumb keys run along, stays put and extends up to meet it.
+The straight part of the inner edge moves out; the edge below it, round the
+thumb keys, is redrawn EDGE_GAP from their keycaps (tools/thumbs.py).
 
 Shifts the right half by RIGHT_DX first so the widened halves don't overlap in
 the file; every later step works in the shifted frame. Both inner edges move
@@ -16,6 +16,8 @@ import sys
 
 import pcbnew
 
+import thumbs
+
 MM = pcbnew.FromMM
 
 WIDEN = 6.2
@@ -27,21 +29,26 @@ JACK_PORT = 0.25         # jack origin sits this far inside its port edge
 # Beside each controller; pads clear the new edge by >=0.5 mm (board rule).
 JACKS = {"J1": 149.39, "J3": 149.92}
 # Inner mounting holes: follow the widened edge and clear the new thumb key.
-# The angled inner edge moves out so the inner thumb keycaps sit as far from
-# it as the outer column's keycaps sit from the outer edge (0.95 mm).
-THUMB_EDGE_OUT = 0.44
-BOTTOM_EDGE_OUT = 0.34   # same, for the short bottom edge under the lower inner thumb key
+# Left half, upstream frame: the thumb-area edge being redrawn lies in CHAIN_X
+# below CHAIN_Y; it starts at the inner edge's bend and ends on the main block's
+# bottom edge (BODY: the end it meets, then a point further along it). The right
+# half mirrors it about MIRROR_X.
+BODY = ((71.29, 113.77), (36.41, 113.74))
+CHAIN_X, CHAIN_Y = (71.2, 146.8), 113.76
+MIRROR_X = 299.31
+# Corner radii along the chain. The tip below the lower inner key is rounded
+# about the keycap's own rounded corner, so the gap holds round it; the rest
+# keep upstream's radii.
+CHAIN_RADII = [thumbs.CAP_R + thumbs.EDGE_GAP, 3.41, 0.52, 0.5]
+# The trackpoint sensor board's half width, and how far it reaches below the
+# outer key's centre (tools/make_footprints.py, placed by tools/outer_thumb.py).
+SENSOR_HALF_W, SENSOR_BELOW = 6.6, 10.84
 HOLES = {(144.56, 110.27): (150.56, 106.0), (154.75, 110.27): (148.75, 106.0)}
 
 EDGES = {
-    # half: (sign, straight inner edge, top arc, top line's inner end, angled edge (bend end first),
-    #        bottom corner arc, bottom edge (corner end first), a point on the board)
-    "left": (+1, ((146.71, 57.46), (146.79, 117.4)), ((146.21, 56.96), (146.71, 57.46)), (146.21, 56.96),
-             ((146.79, 117.4), (134.54, 138.58)), ((134.54, 138.58), (132.61, 138.96)),
-             ((132.61, 138.96), (119.05, 131.13)), (125.0, 110.0)),
-    "right": (-1, ((152.6, 57.46), (152.52, 117.4)), ((152.6, 57.46), (153.1, 56.96)), (153.1, 56.96),
-              ((152.52, 117.4), (164.77, 138.58)), ((164.77, 138.58), (166.7, 138.96)),
-              ((166.7, 138.96), (180.26, 131.13)), (175.0, 110.0)),
+    # half: (sign, straight inner edge, top arc, top line's inner end)
+    "left": (+1, ((146.71, 57.46), (146.79, 117.4)), ((146.21, 56.96), (146.71, 57.46)), (146.21, 56.96)),
+    "right": (-1, ((152.6, 57.46), (152.52, 117.4)), ((152.6, 57.46), (153.1, 56.96)), (153.1, 56.96)),
 }
 
 
@@ -72,33 +79,83 @@ def line_intersect(p, d, q, e):
     return (p[0] + t * d[0], p[1] + t * d[1])
 
 
-def fillet(p, d, q, e, r, inside):
-    """Fillet of radius r between lines (p,d) and (q,e); 'inside' is a point on the board."""
-    def normal(a, dd):
-        L = math.hypot(*dd)
-        n = (-dd[1] / L, dd[0] / L)
-        if (inside[0] - a[0]) * n[0] + (inside[1] - a[1]) * n[1] < 0:
-            n = (-n[0], -n[1])
-        return n
-    n1, n2 = normal(p, d), normal(q, e)
-    c = line_intersect((p[0] + r * n1[0], p[1] + r * n1[1]), d, (q[0] + r * n2[0], q[1] + r * n2[1]), e)
-    t1 = (c[0] - r * n1[0], c[1] - r * n1[1])
-    t2 = (c[0] - r * n2[0], c[1] - r * n2[1])
-    bis = ((t1[0] + t2[0]) / 2 - c[0], (t1[1] + t2[1]) / 2 - c[1])
-    L = math.hypot(*bis)
-    return t1, (c[0] + r * bis[0] / L, c[1] + r * bis[1] / L), t2
+def add_shape(board, kind, a, b, mid=None):
+    s = pcbnew.PCB_SHAPE(board, kind)
+    if mid is None:
+        s.SetStart(V(a))
+        s.SetEnd(V(b))
+    else:
+        s.SetArcGeometry(V(a), V(mid), V(b))
+    s.SetLayer(pcbnew.Edge_Cuts)
+    s.SetWidth(MM(0.05))
+    board.Add(s)
+    return s
 
 
-def arc_radius(a, m, b):
-    ax, ay = a; bx, by = m; cx, cy = b
-    d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
-    ux = ((ax**2 + ay**2) * (by - cy) + (bx**2 + by**2) * (cy - ay) + (cx**2 + cy**2) * (ay - by)) / d
-    uy = ((ax**2 + ay**2) * (cx - bx) + (bx**2 + by**2) * (ax - cx) + (cx**2 + cy**2) * (bx - ax)) / d
-    return math.hypot(ax - ux, ay - uy)
+def corner(prev, c, nxt, r):
+    """Round the corner at c (between the lines from prev and to nxt) with radius r:
+    (start tangent point, arc midpoint, end tangent point)."""
+    u1 = unit((prev[0] - c[0], prev[1] - c[1]))
+    u2 = unit((nxt[0] - c[0], nxt[1] - c[1]))
+    half_angle = math.acos(max(-1.0, min(1.0, u1[0] * u2[0] + u1[1] * u2[1]))) / 2
+    t = r / math.tan(half_angle)
+    bis = unit((u1[0] + u2[0], u1[1] + u2[1]))
+    h = r / math.sin(half_angle) - r
+    return ((c[0] + t * u1[0], c[1] + t * u1[1]), (c[0] + h * bis[0], c[1] + h * bis[1]),
+            (c[0] + t * u2[0], c[1] + t * u2[1]))
+
+
+def unit(v):
+    L = math.hypot(*v)
+    return (v[0] / L, v[1] / L)
+
+
+def rotated_corner(c, deg, sx, sy, inset):
+    """A keycap corner (sx, sy = -1/+1 in the key's frame), moved inset toward the centre on both axes."""
+    dx, dy = thumbs.rot(sx * (thumbs.CAP_W / 2 - inset), sy * (thumbs.CAP_H / 2 - inset), deg)
+    return (c[0] + dx, c[1] + dy)
+
+
+def thumb_chain():
+    """Left half, upstream frame: the edge from the bend in the inner edge round the
+    thumb keys to the bottom of the main block, as corner points (bend first, a
+    point on the main block's bottom edge last) and the radius for each corner
+    in between.
+
+    Beside and under the inner keys the edge runs thumbs.EDGE_GAP from their
+    keycaps. Under the middle and outer keys it is one level line, EDGE_GAP
+    below the middle keycap's lowest point, which leaves the trackpoint room
+    on the right half. Its outer corner sits as far out from the trackpoint
+    sensor's bottom outer corner as it is below it, and the slant from there
+    up to the main block leans like the inner edge (mirrored)."""
+    (c0, d0), (c1, d1), (c2, d2), _ = thumbs.keys("left")
+    gh = thumbs.CAP_H / 2 + thumbs.EDGE_GAP
+    gw = thumbs.CAP_W / 2 + thumbs.EDGE_GAP
+
+    def along(c, v, k):
+        return (c[0] + k * v[0], c[1] + k * v[1])
+
+    across = lambda deg: thumbs.rot(1, 0, deg)
+    v0, v1 = EDGES["left"][1]
+    vertical = ((v0[0] + WIDEN, v0[1]), (v1[0] - v0[0], v1[1] - v0[1]))
+    side = (along(c2, across(d2), gw), thumbs.down(d2))           # beside the inner keys
+    end = (along(c2, thumbs.down(d2), gh), across(d2))            # under the lower inner key
+    lowest = max(rotated_corner(c1, d1, sx, sy, thumbs.CAP_R)[1] for sx in (-1, 1) for sy in (-1, 1)) + thumbs.CAP_R
+    level_y = lowest + thumbs.EDGE_GAP
+    sensor_x = c0[0] - SENSOR_HALF_W                              # the sensor's outer side (mirrored)
+    sensor_y = c0[1] + SENSOR_BELOW                               # and its bottom end
+    corner_pt = (sensor_x - (level_y - sensor_y), level_y)
+    level = (corner_pt, (1.0, 0.0))                               # under the middle and outer keys
+    sx, sy = thumbs.down(d2)                                      # the inner edge's direction, mirrored
+    diagonal = (corner_pt, (sx, -sy))
+    body = (BODY[0], (BODY[1][0] - BODY[0][0], BODY[1][1] - BODY[0][1]))
+    lines = [vertical, side, end, level, diagonal, body]
+    points = [line_intersect(*a, *b) for a, b in zip(lines, lines[1:])]
+    return points + [BODY[1]], CHAIN_RADII
 
 
 def widen(board, half):
-    sign, vertical, top_arc, top_end, angled, corner, bottom, inside = EDGES[half]
+    sign, vertical, top_arc, top_end = EDGES[half]
     f = rx if half == "right" else (lambda p: p)
     edges = [d for d in board.GetDrawings() if d.GetLayer() == pcbnew.Edge_Cuts]
 
@@ -122,68 +179,44 @@ def widen(board, half):
             raise LookupError(old)
 
     d = V((sign * WIDEN, 0))
-    seg_v, seg_ta, seg_a = find("Line", *vertical), find("Arc", *top_arc), find("Line", *angled)
+    seg_v, seg_ta = find("Line", *vertical), find("Arc", *top_arc)
     seg_t = [s for s in touching(top_end) if s.GetShapeStr() == "Line"][0]
 
-    # The straight inner edge moves out; the stock angled edge stays where it is
-    # (the inner thumb keys run along it) and extends up to meet it.
+    # The straight inner edge moves out.
     for s in (seg_v, seg_ta):
         s.Move(d)
     move_end(seg_t, top_end, (f(top_end)[0] + sign * WIDEN, f(top_end)[1]))
-    # The angled edge moves THUMB_EDGE_OUT outward (away from the board) and still
-    # meets the straight edge above and, through a stock-radius corner, the bottom edge.
-    a0, a1 = (f(p) for p in angled)
-    dx, dy = a1[0] - a0[0], a1[1] - a0[1]
-    L = math.hypot(dx, dy)
-    nx, ny = dy / L, -dx / L
-    ins = f(inside)
-    if (ins[0] - a0[0]) * nx + (ins[1] - a0[1]) * ny > 0:
-        nx, ny = -nx, -ny
-    a0o = (a0[0] + THUMB_EDGE_OUT * nx, a0[1] + THUMB_EDGE_OUT * ny)
-    v0, v1 = (f(p) for p in vertical)
-    v0, v1 = (v0[0] + sign * WIDEN, v0[1]), (v1[0] + sign * WIDEN, v1[1])
-    bend = line_intersect(v0, (v1[0] - v0[0], v1[1] - v0[1]), a0o, (dx, dy))
-    # Whichever end of the straight edge was at the old bend goes to the new one.
-    if abs(pcbnew.ToMM(seg_v.GetStart().y) - a0[1]) < 0.05:
-        seg_v.SetStart(V(bend))
+    # Everything below the bend is redrawn from the thumb keys: worked out on the
+    # left half (upstream frame) and mirrored for the right.
+    g = (lambda p: p) if half == "left" else (lambda p: rx((MIRROR_X - p[0], p[1])))
+    chain_box = (CHAIN_X[0], CHAIN_X[1]) if half == "left" else (MIRROR_X - CHAIN_X[1], MIRROR_X - CHAIN_X[0])
+    lo, hi = f((chain_box[0], 0))[0], f((chain_box[1], 0))[0]
+    old_chain = [d for d in edges if d is not seg_v and
+                 all(lo - 0.01 <= q[0] <= hi + 0.01 and q[1] >= CHAIN_Y for q in (mm(d.GetStart()), mm(d.GetEnd())))]
+    seg_body = [d for d in edges if d.GetShapeStr() == "Line" and g(BODY[0]) in (mm(d.GetStart()), mm(d.GetEnd()))][0]
+    points, radii = thumb_chain()
+    points = [g(p) for p in points]
+    corners = [corner(points[i - 1], points[i], points[i + 1], radii[i - 1]) for i in range(1, len(points) - 1)]
+    if abs(pcbnew.ToMM(seg_v.GetStart().y) - points[0][1]) < abs(pcbnew.ToMM(seg_v.GetEnd().y) - points[0][1]):
+        seg_v.SetStart(V(points[0]))
     else:
-        seg_v.SetEnd(V(bend))
-    # The short bottom edge under the lower inner thumb key moves out too; its far
-    # end re-meets the next bottom edge through the small arc that joined them.
-    b0, b1 = (f(p) for p in bottom)
-    bdx, bdy = b1[0] - b0[0], b1[1] - b0[1]
-    bL = math.hypot(bdx, bdy)
-    bnx, bny = bdy / bL, -bdx / bL
-    if (ins[0] - b0[0]) * bnx + (ins[1] - b0[1]) * bny > 0:
-        bnx, bny = -bnx, -bny
-    b0o = (b0[0] + BOTTOM_EDGE_OUT * bnx, b0[1] + BOTTOM_EDGE_OUT * bny)
-    seg_b = find("Line", *bottom)
-    seg_s = [d for d in touching(bottom[1]) if d.GetShapeStr() == "Arc"][0]
-    s_far = [p for p in (mm(seg_s.GetStart()), mm(seg_s.GetEnd())) if p != f(bottom[1])][0]
-    seg_n = [d for d in edges if d.GetShapeStr() == "Line" and s_far in (mm(d.GetStart()), mm(d.GetEnd())) and d is not seg_b][0]
-    n_far = [p for p in (mm(seg_n.GetStart()), mm(seg_n.GetEnd())) if p != s_far][0]
-    rs = arc_radius(f(bottom[1]), mm(seg_s.GetArcMid()), s_far)
-    # This corner bends into the board, so its arc's centre lies outside it.
-    outside = (ins[0], ins[1] + 200.0)
-    s2 = fillet(b0o, (bdx, bdy), n_far, (s_far[0] - n_far[0], s_far[1] - n_far[1]), rs, outside)
-    seg_s.SetArcGeometry(V(s2[0]), V(s2[1]), V(s2[2]))
-    if mm(seg_n.GetStart()) == s_far:
-        seg_n.SetStart(V(s2[2]))
+        seg_v.SetEnd(V(points[0]))
+    if mm(seg_body.GetStart()) == g(BODY[0]):
+        seg_body.SetStart(V(corners[-1][2]))
     else:
-        seg_n.SetEnd(V(s2[2]))
-
-    seg_c = find("Arc", *corner)
-    r = arc_radius(f(corner[0]), mm(seg_c.GetArcMid()), f(corner[1]))
-    c = fillet(a0o, (dx, dy), b0o, (bdx, bdy), r, ins)
-    seg_a.SetStart(V(bend))
-    seg_a.SetEnd(V(c[0]))
-    seg_c.SetArcGeometry(V(c[0]), V(c[1]), V(c[2]))
-    seg_b.SetStart(V(c[2]))
-    seg_b.SetEnd(V(s2[0]))
+        seg_body.SetEnd(V(corners[-1][2]))
+    for d in old_chain:                       # last: removing invalidates other handles
+        board.Remove(d)
+    new = [seg_v]
+    at = points[0]
+    for t1, mid, t2 in corners:
+        new.append(add_shape(board, pcbnew.SHAPE_T_SEGMENT, at, t1))
+        add_shape(board, pcbnew.SHAPE_T_ARC, t1, t2, mid)
+        at = t2
 
     if os.environ.get("NEW_EDGES"):           # edges this step created, for cleanup.py
         with open(os.environ["NEW_EDGES"], "a") as rec:
-            for seg in (seg_v, seg_a, seg_b):          # the top line is replaced by top_edge.py
+            for seg in new:                   # the top line is replaced by top_edge.py
                 (ax, ay), (bx, by) = mm(seg.GetStart()), mm(seg.GetEnd())
                 rec.write(f"{ax} {ay} {bx} {by}\n")
 

@@ -87,7 +87,7 @@ def per_half(board_path, out_path, scale):
                f'viewBox="0 0 {PAGE_W} {PAGE_H}" font-family="sans-serif">',
                f'<rect width="{PAGE_W}" height="{PAGE_H}" fill="white"/>',
                f'<g transform="scale({scale})">',
-               f'<text x="20" y="22" font-size="5">Corne Choc v2 — {name} half</text>',
+               f'<text x="20" y="22" font-size="5">Corne Choc v2.1 — {name} half</text>',
                f'<text x="20" y="28" font-size="3.2" fill="#555">Drawn {scale:.3f}x to offset a printer that '
                f'shrinks to {100 / scale:.0f}%. The bar below should measure 100 mm on paper.</text>']
         svg += half_svg(pts, parts, ox, oy)
@@ -111,7 +111,7 @@ def main(board_path, out_path):
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{PAGE_W}mm" height="{PAGE_H}mm" '
            f'viewBox="0 0 {PAGE_W} {PAGE_H}" font-family="sans-serif">',
            f'<rect width="{PAGE_W}" height="{PAGE_H}" fill="white"/>',
-           '<text x="20" y="22" font-size="5">Corne Choc v2 — actual size</text>',
+           '<text x="20" y="22" font-size="5">Corne Choc v2.1 — actual size</text>',
            '<text x="20" y="28" font-size="3.2" fill="#555">Print at 100% / "Actual size". Check the 100 mm bar; '
            'keycaps drawn 17.5 x 16.5 mm; red dot = trackpoint nub.</text>']
     top = 40.0
