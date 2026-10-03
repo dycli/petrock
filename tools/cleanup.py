@@ -1,17 +1,19 @@
 """Remove copper orphaned or blocked by the trackpoint edit.
 
 Deletes tracks of nets that no longer exist, tracks that collide with the new
-pads (TP1, J1, J3), then repeatedly removes dangling track ends.
+pads (TP1, TP2) or sit in a no-track rule area, then repeatedly removes
+dangling track ends on the nets the edit touched.
 """
 import os
 import sys
 
 import pcbnew
 
-GONE_NETS = {"Net-(D42-A)"}
+GONE_NETS = {"Net-(D40-A)"}
 # Only nets whose pads were removed or moved can have new dangling ends.
-AFFECTED_NETS = {"Net-(D42-A)", "data", "data_r", "VCC", "VDD", "SDA_r", "SCL_r", "row3_r", "col5_r", "GND", "GNDA"}
-NEW_PARTS = {"TP1", "J1", "J3"}
+AFFECTED_NETS = {"Net-(D40-A)", "col3_r", "col4_r", "row3_r", "Net-(LED52-DIN)", "Net-(LED32-DOUT)",
+                 "Net-(LED50-DOUT)", "Net-(D44-K)", "GNDA", "VDD"}
+NEW_PARTS = {"TP1", "TP2"}
 CLEARANCE = pcbnew.FromMM(0.2)
 
 
@@ -21,6 +23,12 @@ def collides(track, pad):
             if pad.GetEffectiveShape(layer).Collide(track.GetEffectiveShape(layer), CLEARANCE):
                 return True
     return False
+
+
+def in_area(zone, track):
+    s, e = track.GetStart(), track.GetEnd()
+    pts = [pcbnew.VECTOR2I(int(s.x + (e.x - s.x) * k / 8), int(s.y + (e.y - s.y) * k / 8)) for k in range(9)]
+    return any(zone.Outline().Contains(p) for p in pts)
 
 
 def share_layer(a, b):
@@ -54,10 +62,13 @@ def main(src, dst):
     pads = [p for f in board.GetFootprints() for p in f.Pads()]
     new_pads = [p for f in board.GetFootprints() if f.GetReference() in NEW_PARTS for p in f.Pads()]
     doomed = set()
+    banned = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowTracks()]
     for t in board.GetTracks():
         if t.GetNetname() in GONE_NETS:
             doomed.add(t.m_Uuid.AsString())
         elif any(p.GetNetCode() != t.GetNetCode() and collides(t, p) for p in new_pads):
+            doomed.add(t.m_Uuid.AsString())
+        elif any(any(t.IsOnLayer(l) for l in z.GetLayerSet().Seq()) and in_area(z, t) for z in banned):
             doomed.add(t.m_Uuid.AsString())
     removed = 0
     while True:

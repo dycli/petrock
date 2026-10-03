@@ -1,30 +1,44 @@
-# Corne Choc with a right-thumb trackpoint
+# Corne Choc with an outer-thumb trackpoint
 
 Based on holykeebs' Corne Choc PCB and plate from
 [idank/keyboards](https://github.com/idank/keyboards) (`corne/choc`, commit
-f149b9b), licensed CC-BY-SA-4.0. This derivative is under the same licence.
+f149b9b), licensed CC-BY-SA-4.0. This derivative uses the same licence.
 
-## Changes from upstream
+## Change from upstream
 
-- The right 1.5u thumb switch (SW42) and its diode are gone. TP1, a Pro Micro
-  hole pattern, takes their place for the holykeebs trackpoint module. Pins
-  5/6/21/23 carry GP2 (PS/2 data), GP3 (PS/2 clock), 3.3 V and GND, the same
-  pins holykeebs' firmware uses. Pins 1/12/13/24 are unwired, for support only.
-- The right OLED header is removed, because its pins now drive the trackpoint.
-- Both halves are 6.2 mm wider along the inner edge. The TRRS jacks turn to
-  face the top edge in that strip, beside each controller.
-- The inner mounting hole of each half moves outward to clear the module.
-- `plate-right` replaces the thumb switch opening with a cutout for the module;
-  `plate-left` is upstream's plate, unchanged. `bottom` is a new FR4 bottom
-  plate for the wider outline, with M2 holes at the standoff positions.
+The right half's outer thumb key becomes a Sprintek SK8707-01-004 trackpoint
+(detached sensor + driver, the part holykeebs sells). Nothing else moves: the
+outline, jacks, mounting holes, OLED headers and switch plate are stock, so
+holykeebs' plate and case still fit.
+
+- SW40 (outer thumb switch), its diode D40 and its LED52 are removed. The LED
+  would sit hidden under the sensor; the RGB chain is bridged around it, so the
+  firmware's LED list loses one entry.
+- TP1, the sensor, sits flat on the front at SW40's centre. Its stem comes up
+  through SW40's switch-plate opening, about 5 mm below the keycap tops.
+- TP2, the driver, sits flat on the back directly underneath. The two are
+  linked through four vias.
+- PS/2 data and clock go to controller pins 11 and 12 (GP8 and GP9 on
+  holykeebs' RP2040 controllers); 3.3 V comes from the right OLED header's VDD.
+  The driver's reset and button pins are unused.
 
 ## Build
 
-`tools/build.sh` regenerates every board from upstream and runs DRC.
-`tools/fab.sh` writes Gerber and drill zips to `fab/`. Both expect KiCad 10.
+`tools/build.sh` regenerates the board from upstream: edit, cleanup, routing
+(`tools/maze.py`, a small two-layer grid router), pruning, then DRC with a diff
+against upstream's own report. `tools/fab.sh` writes Gerber and drill zips to
+`fab/`. Both need KiCad 10.
+
+Footprints come from `tools/make_footprints.py`, generated from Sprintek
+datasheet DS0048 v1.04 (`ref/`, not committed).
 
 ## Open items
 
-- The schematic still shows the upstream circuit, not these changes.
-- The module's outline, nub position and stack height come from photos, not
-  measurements. Check them against a real module before ordering.
+- **Driver footprint:** the detached driver's sensor-side edge isn't dimensioned
+  by Sprintek; its pads are elongated to cover +-0.5 mm. Check the pad order and
+  positions against a real part before ordering.
+- **Under-board height:** check that the driver (about 2 mm) clears holykeebs'
+  case or bottom plate.
+- **Firmware:** override `PS2_DATA_PIN GP8` / `PS2_CLOCK_PIN GP9`, remove the
+  outer thumb key from the keymap, and drop LED52 from the RGB layout.
+- **Schematic:** still upstream's.

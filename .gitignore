@@ -4,3 +4,5 @@ fp-info-cache
 *-backups/
 build/
 fab/
+ref/
+__pycache__/
