@@ -17,7 +17,7 @@ import pcbnew
 import thumbs
 
 MM = pcbnew.FromMM
-EDGE_CLEAR = 0.55             # board rule is 0.5
+EDGE_CLEAR = 0.3              # copper to board edge: JLC's minimum (the outer column's sockets sit at 0.33)
 
 HALVES = {
     # old key, its LED and diode; template 1u key, LED, diode; new refs; new key's column; chain/power/ground nets

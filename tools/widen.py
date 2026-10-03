@@ -1,12 +1,13 @@
 """Widen both halves along their inner edge and move the TRRS jacks to the top.
 
 The straight part of the inner edge moves out; the edge below it, round the
-thumb keys, is redrawn EDGE_GAP from their keycaps (tools/thumbs.py).
+thumb keys, is redrawn EDGE_GAP from their keycaps (tools/thumbs.py), and the
+outer side edge moves out to the same gap.
 
 Shifts the right half by RIGHT_DX first so the widened halves don't overlap in
 the file; every later step works in the shifted frame. Both inner edges move
-out by WIDEN, the jacks turn to face the top edge in the new strip beside each
-controller, and the inner mounting hole of each half moves outward.
+out by WIDEN and the jacks turn to face the top edge in the new strip beside
+each controller.
 
 Coordinates below are in the upstream frame; rx() maps right-half points.
 """
@@ -28,7 +29,10 @@ TOP_EDGE = 56.96
 JACK_PORT = 0.25         # jack origin sits this far inside its port edge
 # Beside each controller; pads clear the new edge by >=0.5 mm (board rule).
 JACKS = {"J1": 149.39, "J3": 149.92}
-# Inner mounting holes: follow the widened edge and clear the new thumb key.
+# Left half, upstream frame: the outer side edge (straight part, bottom corner
+# arc, and the bottom edge's end at that arc), and the outer column's centre.
+OUTER_EDGE = (((16.8, 60.92), (16.8, 113.24)), ((17.3, 113.74), (16.8, 113.24)), (17.3, 113.74))
+OUTER_EDGE_X, OUTER_COL_X = 16.8, 26.5
 # Left half, upstream frame: the thumb-area edge being redrawn lies in CHAIN_X
 # below CHAIN_Y; it starts at the inner edge's bend and ends on the main block's
 # bottom edge (BODY: the end it meets, then a point further along it). The right
@@ -43,7 +47,6 @@ CHAIN_RADII = [thumbs.CAP_R + thumbs.EDGE_GAP, 3.41, 0.52, 0.5]
 # The trackpoint sensor board's half width, and how far it reaches below the
 # outer key's centre (tools/make_footprints.py, placed by tools/outer_thumb.py).
 SENSOR_HALF_W, SENSOR_BELOW = 6.6, 10.84
-HOLES = {(144.56, 110.27): (150.56, 106.0), (154.75, 110.27): (148.75, 106.0)}
 
 EDGES = {
     # half: (sign, straight inner edge, top arc, top line's inner end)
@@ -154,6 +157,26 @@ def thumb_chain():
     return points + [BODY[1]], CHAIN_RADII
 
 
+def outer_edge(board, half):
+    """Move the outer side edge out to thumbs.EDGE_GAP from the outer column's
+    keycaps, with its bottom corner; tools/top_edge.py meets its top end."""
+    g = (lambda p: p) if half == "left" else (lambda p: rx((MIRROR_X - p[0], p[1])))
+    sign = -1 if half == "left" else 1
+    dx = sign * (OUTER_EDGE_X - (OUTER_COL_X - thumbs.CAP_W / 2 - thumbs.EDGE_GAP))
+    (v0, v1), (a0, a1), body_end = OUTER_EDGE
+    edges = [d for d in board.GetDrawings() if d.GetLayer() == pcbnew.Edge_Cuts]
+    ends = lambda d: {mm(d.GetStart()), mm(d.GetEnd())}
+    (vert,) = [d for d in edges if d.GetShapeStr() == "Line" and ends(d) == {g(v0), g(v1)}]
+    (arc,) = [d for d in edges if d.GetShapeStr() == "Arc" and ends(d) == {g(a0), g(a1)}]
+    (body,) = [d for d in edges if d.GetShapeStr() == "Line" and g(body_end) in ends(d) and d is not vert]
+    for d in (vert, arc):
+        d.Move(V((dx, 0)))
+    if mm(body.GetStart()) == g(body_end):
+        body.SetStart(V((g(body_end)[0] + dx, body_end[1])))
+    else:
+        body.SetEnd(V((g(body_end)[0] + dx, body_end[1])))
+
+
 def widen(board, half):
     sign, vertical, top_arc, top_end = EDGES[half]
     f = rx if half == "right" else (lambda p: p)
@@ -239,10 +262,11 @@ def main(src, dst):
     index = {}
     for f in board.GetFootprints():
         index.setdefault(f.GetReference(), []).append(f)
-    holes = [(f, mm(f.GetPosition())) for f in board.GetFootprints() if f.GetFPIDAsString() == "holykeebs:M2_HOLE_NPH"]
     shift_right_half(board)
     widen(board, "left")
     widen(board, "right")
+    outer_edge(board, "left")
+    outer_edge(board, "right")
     for ref, x in JACKS.items():
         (fp,) = index[ref]
         fp.SetOrientationDegrees(0)
@@ -253,9 +277,6 @@ def main(src, dst):
                 pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
         p = (x, TOP_EDGE + JACK_PORT)
         fp.SetPosition(V(rx(p) if ref == "J3" else p))
-    for old, new in HOLES.items():
-        (fp,) = [f for f, at in holes if at == old]
-        fp.SetPosition(V(rx(new) if old[0] > SPLIT_X else new))
     board.Save(dst)
 
 

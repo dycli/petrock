@@ -2,12 +2,17 @@
 inner top corner up to the middle-finger column, flat across its top, and a
 straight slope down to the outer top corner.
 
-PEAKS holds each half's four points in the PCB frame after tools/widen.py.
+PEAKS holds each half's four points in the PCB frame after tools/widen.py; the
+outer ends then slide along their slopes to the outer side edge, which
+tools/widen.py moved out, and that edge's top end meets them.
 """
 import os
 import sys
 
 import pcbnew
+
+import thumbs
+import widen
 
 MM = pcbnew.FromMM
 
@@ -23,20 +28,39 @@ def mm(v):
     return round(pcbnew.ToMM(v.x), 2), round(pcbnew.ToMM(v.y), 2)
 
 
+def outer_end(pts, x):
+    """pts with its outer end slid along the outer slope to x."""
+    (x0, y0), (x1, y1) = (pts[0], pts[1]) if abs(pts[0][0] - x) < abs(pts[-1][0] - x) else (pts[-1], pts[-2])
+    end = (round(x, 3), round(y0 + (x - x0) * (y1 - y0) / (x1 - x0), 3))
+    return [end] + pts[1:] if (x0, y0) == pts[0] else pts[:-1] + [end]
+
+
 def main(src, dst):
     board = pcbnew.LoadBoard(src)
+    left_x = widen.OUTER_COL_X - thumbs.CAP_W / 2 - thumbs.EDGE_GAP
+    outer = {"left": (PEAKS["left"][0], left_x),
+             "right": (PEAKS["right"][-1], widen.MIRROR_X - left_x + widen.RIGHT_DX)}
+    peaks = {h: outer_end(pts, outer[h][1]) for h, pts in PEAKS.items()}
+    # The outer side edges' top ends, moved out with them, rise to the new ends.
+    for d in board.GetDrawings():
+        if d.GetLayer() == pcbnew.Edge_Cuts and d.GetShapeStr() == "Line":
+            for h, (old, x) in outer.items():
+                end = peaks[h][0] if h == "left" else peaks[h][-1]
+                for get, put in ((d.GetStart, d.SetStart), (d.GetEnd, d.SetEnd)):
+                    if mm(get()) == (round(x, 2), old[1]):
+                        put(pcbnew.VECTOR2I(MM(end[0]), MM(end[1])))
     doomed = []
     for d in board.GetDrawings():
         if d.GetLayer() != pcbnew.Edge_Cuts:
             continue
         (ax, ay), (bx, by) = mm(d.GetStart()), mm(d.GetEnd())
-        for pts in PEAKS.values():
+        for pts in peaks.values():
             if max(ay, by) < TOP_Y and pts[0][0] - 0.01 <= min(ax, bx) and max(ax, bx) <= pts[-1][0] + 0.01:
                 doomed.append(d)
     for d in doomed:          # removing invalidates other handles, so all at once
         board.Remove(d)
     record = open(os.environ["NEW_EDGES"], "a") if os.environ.get("NEW_EDGES") else None
-    for pts in PEAKS.values():
+    for pts in peaks.values():
         for a, b in zip(pts, pts[1:]):
             if record:
                 record.write(f"{a[0]} {a[1]} {b[0]} {b[1]}\n")

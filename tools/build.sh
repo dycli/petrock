@@ -16,11 +16,12 @@ bin/kpy tools/widen.py $B/upstream.kicad_pcb $B/s1.kicad_pcb
 bin/kpy tools/top_edge.py $B/s1.kicad_pcb $B/s1.kicad_pcb
 bin/kpy tools/split_thumbs.py $B/s1.kicad_pcb $B/s1.kicad_pcb
 bin/kpy tools/outer_thumb.py $B/s1.kicad_pcb $B/s1.kicad_pcb
-bin/kpy tools/strip_logos.py $B/s1.kicad_pcb $B/s1.kicad_pcb
+bin/kpy tools/strip.py $B/s1.kicad_pcb $B/s1.kicad_pcb
+bin/kpy tools/underglow.py $B/s1.kicad_pcb $B/s1.kicad_pcb
 refill $B/s1.kicad_pcb
 rm -f $B/affected.txt
 AFFECTED_OUT=$B/affected.txt bin/kpy tools/cleanup.py $B/s1.kicad_pcb $B/s2.kicad_pcb \
-  J1,J3,TP1,TP2,SW21,SW42,SW43,SW44,D21,D42,D45,D46,LED27,LED54,LED55,LED56 >$B/cleanup.log
+  J1,J3,TP1,TP2,LED5,LED32,SW21,SW42,SW43,SW44,D21,D42,D45,D46,LED27,LED54,LED55,LED56 >$B/cleanup.log
 cp $B/s2.kicad_pcb $B/r.kicad_pcb
 route() { bin/kpy tools/maze.py $B/r.kicad_pcb $B/r.kicad_pcb "$@"; }
 # The sensor-to-driver links first (each a via straight through, front pad to
@@ -40,7 +41,7 @@ cp $B/r.kicad_pcb $B/out.kicad_pcb
 mapfile -t NETS < <(sort -u $B/affected.txt; printf '%s\n' TP_DATA TP_CLK VDD VCC data data_r)
 while [ "$(bin/kpy tools/prune.py $B/out.kicad_pcb $B/out.kicad_pcb "${NETS[@]}" | tail -1)" != 0 ]; do :; done
 # Finish: drop dead ends DRC finds, reconnect anything that opens, until clean.
-for pass in 1 2 3; do
+for pass in 1 2 3 4 5; do
   bin/kcli pcb drc --refill-zones --save-board --format json -o $B/drc.json $B/out.kicad_pcb >/dev/null 2>&1 || true
   [ "$(bin/kpy tools/drop_dangling.py $B/out.kicad_pcb $B/drc.json | tail -1)" = 0 ] && \
     [ "$(python3 -c "import json;print(len([u for u in json.load(open('$B/drc.json')).get('unconnected_items',[]) if not all(i['description'].startswith('Zone') for i in u['items'])]))")" = 0 ] && break
@@ -55,7 +56,7 @@ cp $B/out.kicad_pcb "pcb/corne choc.kicad_pcb"
 # Switch plates (the left one is the right-half design flipped; the right one
 # also clears the trackpoint sensor) and bottom plate.
 git show 59d1639:"pcb/corne choc plate.kicad_pcb" > $B/plate_up.kicad_pcb
-bin/kpy tools/strip_logos.py $B/plate_up.kicad_pcb $B/plate_up.kicad_pcb
+bin/kpy tools/strip.py $B/plate_up.kicad_pcb $B/plate_up.kicad_pcb
 bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb "pcb/corne choc plate.kicad_pcb" "pcb/corne choc plate right.kicad_pcb"
 cp "pcb/corne choc plate.kicad_pro" "pcb/corne choc plate right.kicad_pro"
 bin/kcli pcb drc --refill-zones --save-board -o $B/plate_drc.rpt "pcb/corne choc plate.kicad_pcb" >/dev/null 2>&1 || true

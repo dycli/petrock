@@ -99,6 +99,14 @@ def follow_bottom(plate, clip):
     plate.BooleanAdd(band)
 
 
+def follow_outer(plate, clip):
+    """Grow the plate to the PCB's outer side edge, moved out by tools/widen.py."""
+    x0, x1 = 290.0 - RIGHT_DX + PLATE_DX, 300.0 - RIGHT_DX + PLATE_DX      # PCB frame: outer column's edge
+    band = polygon([(x0, 55.0), (x1, 55.0), (x1, 120.0), (x0, 120.0)])
+    band.BooleanIntersection(clip)
+    plate.BooleanAdd(band)
+
+
 def pcb_shapes(path):
     """The edited PCB's right-half outline and the trackpoint sensor board
     grown by SENSOR_MARGIN, both moved into the plate frame."""
@@ -154,6 +162,7 @@ def main(src, pcb_path, dst, dst_right):
     plate.BooleanAdd(bevel(centres[1]))
     peak(plate)
     follow_bottom(plate, clip)
+    follow_outer(plate, clip)
     plate.BooleanIntersection(clip)             # never past the PCB's edge
     for d in [d for d in board.GetDrawings() if d.GetLayer() == pcbnew.Edge_Cuts]:
         board.Remove(d)

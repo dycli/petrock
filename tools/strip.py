@@ -1,18 +1,19 @@
-"""Remove the holykeebs and Corne logos.
+"""Remove the holykeebs and Corne logos, and the mounting holes for holykeebs'
+OLED cover (unused here; the switch plate covers them).
 
-usage: strip_logos.py IN OUT
+usage: strip.py IN OUT
 """
 import os
 import sys
 
 import pcbnew
 
-LOGOS = ("holykeebs:logo", "kbd:corne-logo")
+GONE = ("holykeebs:logo", "kbd:corne-logo", "holykeebs:M2_HOLE_NPH")
 
 
 def main(src, dst):
     board = pcbnew.LoadBoard(src)
-    doomed = [f for f in board.GetFootprints() if f.GetFPIDAsString().startswith(LOGOS)]
+    doomed = [f for f in board.GetFootprints() if f.GetFPIDAsString().startswith(GONE)]
     for f in doomed:            # removing invalidates other handles, so all at once
         board.Remove(f)
     board.Save(dst)

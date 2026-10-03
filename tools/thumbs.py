@@ -16,7 +16,9 @@ import math
 ROW_PITCH = 17.0                     # choc 18 x 17 mm spacing: rows are 17 mm apart
 CAP_W, CAP_H = 17.5, 16.5            # keycap across / up-down, in the key's own frame
 CAP_R = 1.0                          # keycap corner radius
-EDGE_GAP = 0.95                      # keycap to board edge, as on the outer column
+# Keycap to board edge wherever the edge follows keys; leaves every hot-swap
+# socket pad 0.33 mm from the edge (the stock outer column had 0.95: 0.13 mm).
+EDGE_GAP = 1.15
 
 # Upstream centres and orientations of the outer and middle thumb keys.
 HALVES = {

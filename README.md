@@ -15,19 +15,25 @@ v1 (tag `v1`) keeps the stock outline and only adds the trackpoint. v2 adds:
   degrees, lower inner key turned and moved by the same step again (30
   degrees), so their corners line up. A new key sits one row above the lower
   inner key, on its row's spare column (col2). Each gets a diode and a per-key
-  LED (inserted in the RGB chain after the moved key's LED). The lower keys
-  are turned 180 degrees where needed so their hot-swap pads clear the edge.
-- The edge round the thumbs is redrawn from the keys, the same on both halves:
-  beside and under the inner keys it runs 0.95 mm from the keycaps, like the
-  outer column, rounding the bottom tip about the keycap's corner; under the
-  middle and outer keys it is one level line 0.95 mm below the middle keycap's
-  lowest point, which leaves the trackpoint room.
+  LED (inserted in the RGB chain after the moved key's LED). Every switch faces
+  the same way, so all per-key LEDs sit on the same side.
+- Keycaps sit 1.15 mm from the edge wherever it follows them, which leaves
+  every hot-swap socket pad 0.33 mm from the edge (stock: 0.95 mm, and 0.13 mm
+  on the right outer column). The outer side edges move out to that gap. The
+  edge round the thumbs is redrawn from the keys, the same on both halves:
+  beside and under the inner keys at that gap, rounding the bottom tip about
+  the keycap's corner; under the middle and outer keys one level line below the
+  middle keycap's lowest point, which leaves the trackpoint room.
 - Peaked top edges: straight from each top corner to the middle-finger column.
 - The trackpoint from v1: Sprintek SK8707-01-004 at the right outer thumb key,
   sensor on the front with its stem 3.4 mm below the old key centre (the
   board's long end above it), driver on the back, PS/2 on controller pins 11/12
   (GP8/GP9). LED52 under it is removed and the RGB chain bridged.
-- The holykeebs and Corne logos are removed.
+- The underglow LED beside the trackpoint driver (LED32) and its left twin
+  (LED5) move to open board between the bottom row's LEDs, mirrored, so
+  the driver's hand-soldered pads have room.
+- The holykeebs and Corne logos are removed, and so are the mounting holes for
+  holykeebs' OLED cover (the switch plate covers them; the cover isn't used).
 - Switch plates regenerated: the left one is the right-half design flipped;
   the right one also has an opening round the trackpoint sensor, which stands
   taller than the gap under the plate. A new FR4 bottom plate fits the wider
