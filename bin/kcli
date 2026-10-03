@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec /nix/store/zxkq3n4h46mhs5v53zc0qw9gbpnz763p-kicad-small-10.0.6/bin/kicad-cli "$@"
