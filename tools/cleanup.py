@@ -1,4 +1,7 @@
-"""Remove copper orphaned or blocked by the trackpoint edit.
+"""Remove copper orphaned or blocked by an edit.
+
+usage: cleanup.py IN OUT REF,REF,...   (the footprints that were added or moved)
+
 
 Deletes tracks of nets that no longer exist, tracks that collide with the new
 pads (TP1, TP2) or sit in a no-track rule area, then repeatedly removes
@@ -10,11 +13,8 @@ import sys
 import pcbnew
 
 GONE_NETS = {"Net-(D40-A)"}
-# Only nets whose pads were removed or moved can have new dangling ends.
-AFFECTED_NETS = {"Net-(D40-A)", "col3_r", "col4_r", "row3_r", "Net-(LED52-DIN)", "Net-(LED32-DOUT)",
-                 "Net-(LED50-DOUT)", "Net-(D44-K)", "GNDA", "VDD"}
-NEW_PARTS = {"TP1", "TP2"}
 CLEARANCE = pcbnew.FromMM(0.2)
+EDGE_CLEAR = pcbnew.FromMM(0.5)
 
 
 def collides(track, pad):
@@ -57,19 +57,41 @@ def connected_end(board, track, point, pads, others):
     return False
 
 
-def main(src, dst):
+def main(src, dst, parts):
+    """parts: references of footprints that were added or moved."""
     board = pcbnew.LoadBoard(src)
+    NEW_PARTS = set(parts.split(","))
     pads = [p for f in board.GetFootprints() for p in f.Pads()]
     new_pads = [p for f in board.GetFootprints() if f.GetReference() in NEW_PARTS for p in f.Pads()]
+    # Nets that can have new dangling ends: those of the changed parts, nets that
+    # disappeared, and (below) nets whose copper is cut for colliding.
+    AFFECTED_NETS = {p.GetNetname() for p in new_pads if p.GetNetname()} | GONE_NETS
     doomed = set()
     banned = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowTracks()]
+    # Copper must stay EDGE_CLEAR from edges the edit created (listed by
+    # widen.py/top_edge.py in $NEW_EDGES); upstream's own edges are left alone.
+    edges = []
+    if os.environ.get("NEW_EDGES"):
+        for line in open(os.environ["NEW_EDGES"]):
+            x0, y0, x1, y1 = map(float, line.split())
+            edges.append(pcbnew.SEG(pcbnew.VECTOR2I(pcbnew.FromMM(x0), pcbnew.FromMM(y0)),
+                                    pcbnew.VECTOR2I(pcbnew.FromMM(x1), pcbnew.FromMM(y1))))
+
+    def near_edge(t):
+        if t.GetClass() == "PCB_VIA":
+            return False
+        seg = pcbnew.SEG(t.GetStart(), t.GetEnd())
+        limit = EDGE_CLEAR + t.GetWidth() // 2
+        return any(e.Distance(seg) < limit for e in edges)
+
     for t in board.GetTracks():
         if t.GetNetname() in GONE_NETS:
             doomed.add(t.m_Uuid.AsString())
-        elif any(p.GetNetCode() != t.GetNetCode() and collides(t, p) for p in new_pads):
+        elif any(p.GetNetCode() != t.GetNetCode() and collides(t, p) for p in new_pads) or \
+                any(any(t.IsOnLayer(l) for l in z.GetLayerSet().Seq()) and in_area(z, t) for z in banned) or \
+                near_edge(t):
             doomed.add(t.m_Uuid.AsString())
-        elif any(any(t.IsOnLayer(l) for l in z.GetLayerSet().Seq()) and in_area(z, t) for z in banned):
-            doomed.add(t.m_Uuid.AsString())
+            AFFECTED_NETS.add(t.GetNetname())
     removed = 0
     while True:
         tracks = [t for t in board.GetTracks() if t.m_Uuid.AsString() not in doomed]
@@ -98,10 +120,13 @@ def main(src, dst):
             board.Remove(t)
             removed += 1
     print(f"removed {removed}", file=sys.stderr)
+    if os.environ.get("AFFECTED_OUT"):
+        with open(os.environ["AFFECTED_OUT"], "a") as f:
+            f.writelines(n + "\n" for n in sorted(AFFECTED_NETS))
     board.Save(dst)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3])
     sys.stdout.flush()
     os._exit(0)

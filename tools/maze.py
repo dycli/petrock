@@ -21,7 +21,8 @@ import pcbnew
 
 MM = pcbnew.FromMM
 CELL = 0.1
-CLEAR = 0.21         # board rule is 0.2; the extra covers grid rounding
+CLEAR = 0.26         # board rule is 0.2; the extra covers grid rounding and snapped ends
+PAD_CLEAR = 0.36     # pads carry upstream's 0.3 mm pad clearance
 EDGE_CLEAR = 0.5
 CUTOUT_CLEAR = 0.5
 PAD_ESCAPE = 1.2      # mm around start/goal where LED-window clearance is relaxed to 0.25
@@ -108,9 +109,11 @@ def build_masks(board, grid, net, half_w):
             if same:
                 grid.fill_poly(target[l], item_poly(it, l, 0))
             else:
-                grid.fill_poly(others[l], item_poly(it, l, CLEAR + half_w))
+                grid.fill_poly(others[l], item_poly(it, l, (PAD_CLEAR if it.GetClass() == "PAD" else CLEAR) + half_w))
                 blocked[l] |= others[l]
                 grid.fill_poly(via_blocked, item_poly(it, l, CLEAR + VIA_D / 2))
+        if it.GetClass() == "PCB_VIA":         # drilled holes keep apart whatever their net
+            grid.fill_poly(via_blocked, circle(it.GetPosition(), pcbnew.ToMM(it.GetDrill()) / 2 + HOLE_TO_HOLE + VIA_DRILL / 2 + 0.05))
         if it.GetClass() == "PAD" and it.GetDrillSizeX() > 0:   # holes block both layers
             r = pcbnew.ToMM(it.GetDrillSizeX()) / 2
             if not same:

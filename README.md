@@ -1,32 +1,36 @@
-# Corne Choc with an outer-thumb trackpoint
+# Corne Choc with an outer-thumb trackpoint (v2)
 
 Based on holykeebs' Corne Choc PCB and plate from
 [idank/keyboards](https://github.com/idank/keyboards) (`corne/choc`, commit
 f149b9b), licensed CC-BY-SA-4.0. This derivative uses the same licence.
 
-## Change from upstream
+## Changes from upstream
 
-The right half's outer thumb key becomes a Sprintek SK8707-01-004 trackpoint
-(detached sensor + driver, the part holykeebs sells). Nothing else moves: the
-outline, jacks, mounting holes, OLED headers and switch plate are stock, so
-holykeebs' plate and case still fit.
+v1 (tag `v1`) keeps the stock outline and only adds the trackpoint. v2 adds:
 
-- SW40 (outer thumb switch), its diode D40 and its LED52 are removed. The LED
-  would sit hidden under the sensor; the RGB chain is bridged around it, so the
-  firmware's LED list loses one entry.
-- TP1, the sensor, sits flat on the front at SW40's centre. Its stem comes up
-  through SW40's switch-plate opening, about 5 mm below the keycap tops.
-- TP2, the driver, sits flat on the back directly underneath. The two are
-  linked through four vias.
-- PS/2 data and clock go to controller pins 11 and 12 (GP8 and GP9 on
-  holykeebs' RP2040 controllers); 3.3 V comes from the right OLED header's VDD.
-  The driver's reset and button pins are unused.
+- Both halves 6.2 mm wider along the inner edge; the TRRS jacks face the top
+  edge in that strip, beside each controller.
+- The inner 1.5u thumb key on each half becomes two 1u keys at the same angle:
+  the old key moved 4.5 mm down its axis, a new key above it on its row's spare
+  column (col2). Each gets a diode and a per-key LED (inserted in the RGB chain
+  after the moved key's LED). The right lower key is turned 180 degrees so its
+  hot-swap pads clear the board edge; its LED turns with it.
+- The angled inner edge runs straight up along both inner thumb keys to the
+  widened edge, and it and the short bottom edge under the lower key sit
+  0.95 mm from the keycaps, like the outer column.
+- Peaked top edges: straight from each top corner to the middle-finger column.
+- The trackpoint from v1: Sprintek SK8707-01-004 at the right outer thumb key,
+  sensor on the front, driver on the back, PS/2 on controller pins 11/12
+  (GP8/GP9). LED52 under it is removed and the RGB chain bridged.
+- Switch plate regenerated (one design, flipped for the left half) and a new
+  FR4 bottom plate for the wider outline.
 
 ## Build
 
-`tools/build.sh` regenerates the board from upstream: edit, cleanup, routing
-(`tools/maze.py`, a small two-layer grid router), pruning, then DRC with a diff
-against upstream's own report. `tools/fab.sh` writes Gerber and drill zips to
+`tools/build.sh` regenerates the boards from upstream: outline and part edits,
+cleanup, routing (`tools/maze.py`, a small two-layer grid router, driven by
+`tools/autoconnect.py` from DRC's missing connections), pruning, DRC with a
+diff against upstream's own report, then the plates and `printout.pdf`. `tools/fab.sh` writes Gerber and drill zips to
 `fab/`. Both need KiCad 10.
 
 Footprints come from `tools/make_footprints.py`, generated from Sprintek
@@ -43,6 +47,8 @@ datasheet DS0048 v1.04 (`ref/`, not committed).
   check on a real part is still worthwhile before ordering.
 - **Under-board height:** check that the driver (about 2 mm) clears holykeebs'
   case or bottom plate.
-- **Firmware:** override `PS2_DATA_PIN GP8` / `PS2_CLOCK_PIN GP9`, remove the
-  outer thumb key from the keymap, and drop LED52 from the RGB layout.
+- **Firmware:** override `PS2_DATA_PIN GP8` / `PS2_CLOCK_PIN GP9`; keymap
+  gains the two new thumb keys (row 3, col 2) and loses the right outer thumb;
+  RGB layout gains LED55/LED56 and loses LED52.
+- **Standoff length** for the plate/PCB/bottom sandwich.
 - **Schematic:** still upstream's.

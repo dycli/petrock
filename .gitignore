@@ -6,3 +6,4 @@ build/
 fab/
 ref/
 __pycache__/
+printout*.pdf

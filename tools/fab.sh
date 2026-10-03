@@ -15,4 +15,5 @@ export_board() {  # name board
   echo "fab/$1.zip: $(unzip -l "fab/$1.zip" | tail -1)"
 }
 export_board pcb "pcb/corne choc.kicad_pcb"
-export_board plate "pcb/corne choc plate.kicad_pcb"     # upstream plate, unchanged
+export_board plate "pcb/corne choc plate.kicad_pcb"     # one design; flip it for the left half
+export_board bottom "pcb/bottom.kicad_pcb"
