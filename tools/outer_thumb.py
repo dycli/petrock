@@ -17,7 +17,7 @@ LIB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib", "sk8
 
 STEM = (206.71, 117.52)          # SW40 centre
 SENSOR_ROT = 180.0               # pad edge toward the controller
-DRIVER_CENTRE = (206.71, 116.3)  # on the back, sensor-link edge up
+DRIVER_CENTRE = (206.71, 116.15) # on the back, sensor-link edge up; corner clears the board edge by 0.5 mm
 DRIVER_NETS = {"1": "GNDA", "2": "TP_DATA", "3": "TP_CLK", "5": "VDD"}   # 4 RST, 6-8 buttons: unused
 CONTROLLER_NETS = {"11": "TP_DATA", "12": "TP_CLK"}                      # U2 pins 11/12 = GP8/GP9
 LINK_NETS = {f"S{i}": f"TP_S{i}" for i in range(1, 5)}
@@ -119,12 +119,12 @@ def main(src, dst):
     # The driver's underside carries exposed connector pads: no copper under it
     # on the back apart from its own castellations.
     cx, cy = DRIVER_CENTRE
-    keepout(board, pcbnew.B_Cu, [(cx - 11.0, cy - 4.4), (cx + 11.0, cy - 4.4), (cx + 11.0, cy + 4.6), (cx - 11.0, cy + 4.6)],
+    keepout(board, pcbnew.B_Cu, [(cx - 11.0, cy - 5.6), (cx + 11.0, cy - 5.6), (cx + 11.0, cy + 6.0), (cx - 11.0, cy + 6.0)],
             tracks=True, vias=True, fills=True)
 
     # Nothing but the sensor's own links under the sensor on the front.
     sx, sy = STEM
-    keepout(board, pcbnew.F_Cu, [(sx - 6.85, sy - 8.0), (sx + 6.85, sy - 8.0), (sx + 6.85, sy + 7.7), (sx - 6.85, sy + 7.7)],
+    keepout(board, pcbnew.F_Cu, [(sx - 6.85, sy - 7.3), (sx + 6.85, sy - 7.3), (sx + 6.85, sy + 7.7), (sx - 6.85, sy + 7.7)],
             tracks=True, vias=True)
 
     # Last: removing tracks invalidates other SWIG handles.

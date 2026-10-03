@@ -34,9 +34,13 @@ datasheet DS0048 v1.04 (`ref/`, not committed).
 
 ## Open items
 
-- **Driver footprint:** the detached driver's sensor-side edge isn't dimensioned
-  by Sprintek; its pads are elongated to cover +-0.5 mm. Check the pad order and
-  positions against a real part before ordering.
+- **Driver footprint:** Sprintek doesn't draw the detached driver on its own.
+  Its footprint comes from the integrated-module drawing, checked against
+  holykeebs' top-view photo (`ref/sk8707-01-004-top.png`): 23 x 14.5 mm,
+  sensor-link pads at 2.5 mm pitch in the same order as the sensor's, pin 1 at
+  the left. The host-pin pitch measures 1.73-1.76 mm in the photo against
+  1.80 mm in the drawing, so those pads are widened to cover either. A caliper
+  check on a real part is still worthwhile before ordering.
 - **Under-board height:** check that the driver (about 2 mm) clears holykeebs'
   case or bottom plate.
 - **Firmware:** override `PS2_DATA_PIN GP8` / `PS2_CLOCK_PIN GP9`, remove the

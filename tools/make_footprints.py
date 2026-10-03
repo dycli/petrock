@@ -5,9 +5,12 @@ drawn in the part's own top view as it sits on the host: the sensor with its
 pad edge down and the stem at the origin; the driver with its host pins down and
 its origin at the board centre.
 
-The detached driver's sensor-side edge is not dimensioned (about 12 mm above
-the host-pin edge, from the integrated drawing and holykeebs' photos), so its
-sensor pads run 2.5 mm deep to cover +-0.5 mm of that uncertainty.
+The detached driver is the integrated module's 23 x 14.5 mm control board; its
+outline, the four sensor-link castellations (2.5 mm pitch, same x as the
+sensor's pads, pin 1 at the left) and the corner pads were checked against
+holykeebs' top-view photo (ref/sk8707-01-004-top.png, about +-0.25 mm). The
+host-pin pitch measures 1.73-1.76 mm in the photo against 1.80 in the drawing,
+so those pads are 1.2 mm wide to cover either.
 """
 import pathlib
 
@@ -55,18 +58,18 @@ def sensor():
 
 
 def driver():
-    w, h = 23.0, 12.0
+    w, h = 23.0, 14.5
     top, bot = -h / 2, h / 2
     b = text("Reference", "TP?", top - 2.0, "F.SilkS") + text("Value", "SK8707-01 driver", 0, "F.Fab")
     b += rect("F.Fab", -w / 2, top, w / 2, bot)
-    b += rect("F.CrtYd", -w / 2 - 0.25, top - 1.35, w / 2 + 0.25, bot + 1.05, 0.05)
-    b += rect("F.SilkS", -w / 2 + 0.6, top + 1.5, w / 2 - 0.6, bot - 1.4, 0.12)
+    b += rect("F.CrtYd", -w / 2 - 0.25, top - 1.25, w / 2 + 0.25, bot + 1.05, 0.05)
+    b += rect("F.SilkS", -w / 2 + 0.6, top + 2.1, w / 2 - 0.6, bot - 1.4, 0.12)
     for i in range(8):                              # host castellations, pin 1 = GND
-        b += smd(str(i + 1), -w / 2 + 3.08 + 1.8 * i, bot - 0.2, 1.0, 2.0)
+        b += smd(str(i + 1), -w / 2 + 3.08 + 1.8 * i, bot - 0.1, 1.2, 1.8)
     for i, (x, pw) in enumerate(SENSOR_PADS, 1):    # sensor link, same x as the sensor's pads
-        b += smd(f"S{i}", x, top + 0.15, pw, 2.5)
+        b += smd(f"S{i}", x, top + 0.25, pw, 2.5)
     for x in (-6.5, 6.5):
-        b += smd("MP", x, top + 0.15, 1.6, 2.5)
+        b += smd("MP", x, top + 0.25, 1.6, 2.5)
     return footprint("SK8707-01_driver", "Sprintek SK8707-01 detached driver, castellated; pins 1 GND 2 DATA 3 CLK 4 RST 5 VCC 6 L 7 M 8 R", b)
 
 

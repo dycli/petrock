@@ -5,8 +5,9 @@ track width), the board edge, holes and no-track/no-via rule areas, then runs A*
 over a 0.1 mm grid with 45-degree moves and vias. The path is simplified to
 straight segments and added to the board.
 
-usage: maze.py IN OUT NET WIDTH SX SY SLAYERS GX GY GLAYERS
-       maze.py IN OUT NET WIDTH SX SY SLAYERS any
+usage: maze.py IN OUT NET WIDTH START GOAL
+  START/GOAL: REF:PAD (a pad, e.g. TP2:5), X,Y,LAYERS (e.g. 217.51,103.8,FB),
+  or GOAL "any".
   layers: F, B or FB (start/goal reachable on those layers). "any" routes to
   the nearest same-net copper not already touching the start.
 """
@@ -25,6 +26,7 @@ EDGE_CLEAR = 0.5
 CUTOUT_CLEAR = 0.5
 PAD_ESCAPE = 1.2      # mm around start/goal where LED-window clearance is relaxed to 0.25
 HOLE_TO_HOLE = 0.25
+HOLE_CLEAR = 0.3      # copper to hole edge
 VIA_D, VIA_DRILL = 0.6, 0.4
 LAYERS = (pcbnew.F_Cu, pcbnew.B_Cu)
 VIA_COST = 40
@@ -112,10 +114,10 @@ def build_masks(board, grid, net, half_w):
         if it.GetClass() == "PAD" and it.GetDrillSizeX() > 0:   # holes block both layers
             r = pcbnew.ToMM(it.GetDrillSizeX()) / 2
             if not same:
-                hole = circle(it.GetPosition(), r + CLEAR + half_w)
+                hole = circle(it.GetPosition(), r + HOLE_CLEAR + half_w)
                 for l in LAYERS:
                     grid.fill_poly(blocked[l], hole)
-            grid.fill_poly(via_blocked, circle(it.GetPosition(), r + HOLE_TO_HOLE + VIA_DRILL / 2 + 0.05))
+            grid.fill_poly(via_blocked, circle(it.GetPosition(), r + max(HOLE_CLEAR + VIA_D / 2, HOLE_TO_HOLE + VIA_DRILL / 2 + 0.05)))
     # Board edge: keep everything EDGE_CLEAR inside the outline (and out of internal cutouts).
     # Outer edge at EDGE_CLEAR; internal cutouts (the reverse-mount LED windows,
     # whose own pads sit close by design) at CUTOUT_CLEAR.
@@ -268,11 +270,29 @@ def dump(path, bf, bb, bv, s, g, goal):
     open(path, "wb").write(png)
 
 
-def main(src, dst, net, width, sx, sy, sl, gx="any", gy=None, gl="FB"):
-    nearest = gx == "any"
-    if nearest:
-        gx, gy = sx, sy
-    width, sx, sy, gx, gy = map(float, (width, sx, sy, gx, gy))
+def endpoint(board, spec):
+    """REF:PAD -> (x, y, layers); X,Y,LAYERS -> same."""
+    if ":" in spec:
+        ref, num = spec.split(":")
+        for f in board.GetFootprints():
+            if f.GetReference() == ref:
+                for p in f.Pads():
+                    if p.GetNumber() == num:
+                        pos = p.GetPosition()
+                        layers = "".join(ch for ch, l in (("F", pcbnew.F_Cu), ("B", pcbnew.B_Cu)) if p.IsOnLayer(l))
+                        return pcbnew.ToMM(pos.x), pcbnew.ToMM(pos.y), layers
+        raise LookupError(spec)
+    x, y, layers = spec.split(",")
+    return float(x), float(y), layers
+
+
+def main(src, dst, net, width, start_spec, goal_spec):
+    probe = pcbnew.LoadBoard(src)
+    sx, sy, sl = endpoint(probe, start_spec)
+    nearest = goal_spec == "any"
+    gx, gy, gl = (sx, sy, "FB") if nearest else endpoint(probe, goal_spec)
+    del probe
+    width = float(width)
     board = pcbnew.LoadBoard(src)
     m = float(os.environ.get("MAZE_MARGIN", "20"))
     xs, ys = [sx, gx], [sy, gy]

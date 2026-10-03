@@ -1,13 +1,13 @@
-"""Hand-route the four sensor-to-driver links: from each sensor pad on the front,
-a via just inside the sensor's pad edge, then straight down to the matching
-driver pad on the back (they share x by construction)."""
+"""Hand-route the four sensor-to-driver links: from each sensor pad on the front
+to a via in the matching driver pad on the back, directly beneath (they share x
+by construction)."""
 import os
 import sys
 
 import pcbnew
 
 MM = pcbnew.FromMM
-VIA_Y = 108.55
+VIA_Y = 109.6
 WIDTH = 0.25
 
 
