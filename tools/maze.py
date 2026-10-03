@@ -21,7 +21,7 @@ import pcbnew
 
 MM = pcbnew.FromMM
 CELL = 0.1
-CLEAR = 0.26         # board rule is 0.2; the extra covers grid rounding and snapped ends
+CLEAR = 0.3          # board rule is 0.2; the extra covers grid rounding, diagonals and snapped ends
 PAD_CLEAR = 0.36     # pads carry upstream's 0.3 mm pad clearance
 EDGE_CLEAR = 0.5
 CUTOUT_CLEAR = 0.5

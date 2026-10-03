@@ -44,9 +44,16 @@ v1 (tag `v1`) keeps the stock outline and only adds the trackpoint. v2 adds:
 `tools/build.sh` regenerates the boards from upstream: outline and part edits,
 cleanup, routing (`tools/maze.py`, a small two-layer grid router, driven by
 `tools/autoconnect.py` from DRC's missing connections), pruning, DRC with a
-diff against upstream's own report, then the plates and `printout.pdf` (plus `printout-scaled.pdf`, drawn
-1.111x for a printer that shrinks to 90%). `tools/fab.sh` writes Gerber and drill zips to
-`fab/`. Both need KiCad 10.
+diff against upstream's own report, then the plates and `printout.pdf` (print
+it with scaling off, e.g. `lp -o print-scaling=none`, for true size).
+`tools/fab.sh` writes Gerber and drill zips and JLC's assembly BOM and
+placement to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.
+
+Two variants build from the same steps: `single` (the default; trackpoint on
+the right) and `dual` (`tools/build.sh dual`, `tools/fab.sh dual`: trackpoints
+on both outer thumb keys, into `pcb/dual/`, `fab/dual/` and
+`printout-dual.pdf`). The dual board's two switch plates are one design, with
+the sensor opening, flipped for the left half.
 
 Footprints come from `tools/make_footprints.py`, generated from Sprintek
 datasheet DS0048 v1.04 (`ref/`, not committed).

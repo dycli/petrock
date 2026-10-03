@@ -2,9 +2,8 @@
 jack, both halves stacked on one portrait letter page inside normal printer
 margins, with scale bars to check the print.
 
-usage: printout.py BOARD OUT.svg [SCALE]
-       SCALE (e.g. 1.111) compensates a printer that shrinks the page; it
-       also switches to one half per page, OUT-left.svg and OUT-right.svg.
+usage: printout.py BOARD OUT.svg
+       Print with scaling off (lp -o print-scaling=none) for true size.
 """
 import math
 import os
@@ -62,41 +61,6 @@ def half_svg(pts, parts, ox, oy):
     return out
 
 
-def bars(svg, by):
-    bx = 20
-    svg.append(f'<line x1="{bx}" y1="{by}" x2="{bx + 100}" y2="{by}" stroke="black" stroke-width="0.5"/>')
-    for t in range(0, 101, 10):
-        svg.append(f'<line x1="{bx + t}" y1="{by - (2 if t % 50 else 3.5)}" x2="{bx + t}" y2="{by}" stroke="black" stroke-width="0.3"/>')
-    svg.append(f'<text x="{bx}" y="{by + 5}" font-size="3.5">100 mm</text>')
-
-
-def per_half(board_path, out_path, scale):
-    board = pcbnew.LoadBoard(board_path)
-    outline = pcbnew.SHAPE_POLY_SET()
-    board.GetBoardPolygonOutlines(outline, False)
-    halves = sorted(([mm(outline.Outline(i).CPoint(k)) for k in range(outline.Outline(i).PointCount())]
-                     for i in range(outline.OutlineCount())), key=lambda pts: min(p[0] for p in pts))
-    parts = [(f.GetReference(), f.GetFPIDAsString(), mm(f.GetPosition()), f.GetOrientationDegrees())
-             for f in board.GetFootprints()]
-    w, h = PAGE_W / scale, PAGE_H / scale          # drawing area before the printer shrinks it
-    for name, pts in zip(("left", "right"), halves):
-        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-        ox = (w - (max(xs) - min(xs))) / 2 - min(xs)
-        oy = 45 - min(ys)
-        svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{PAGE_W}mm" height="{PAGE_H}mm" '
-               f'viewBox="0 0 {PAGE_W} {PAGE_H}" font-family="sans-serif">',
-               f'<rect width="{PAGE_W}" height="{PAGE_H}" fill="white"/>',
-               f'<g transform="scale({scale})">',
-               f'<text x="20" y="22" font-size="5">Corne Choc v2.1 — {name} half</text>',
-               f'<text x="20" y="28" font-size="3.2" fill="#555">Drawn {scale:.3f}x to offset a printer that '
-               f'shrinks to {100 / scale:.0f}%. The bar below should measure 100 mm on paper.</text>']
-        svg += half_svg(pts, parts, ox, oy)
-        bars(svg, 45 + (max(ys) - min(ys)) + 25)
-        svg += ["</g>", "</svg>"]
-        with open(out_path.replace(".svg", f"-{name}.svg"), "w") as f:
-            f.write("\n".join(svg))
-
-
 def main(board_path, out_path):
     board = pcbnew.LoadBoard(board_path)
     outline = pcbnew.SHAPE_POLY_SET()
@@ -138,9 +102,6 @@ def main(board_path, out_path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 3:
-        per_half(sys.argv[1], sys.argv[2], float(sys.argv[3]))
-    else:
-        main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2])
     sys.stdout.flush()
     os._exit(0)

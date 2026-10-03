@@ -44,7 +44,7 @@ def main(src, dst, marbast, kbd, pkg3d, standin, klp, *opts):
         "${KICAD8_3DMODEL_DIR}": pkg3d,
         "${KIGITHUB3D}": pkg3d,
     }
-    keys, tp = [], None
+    keys, sensors = [], []
     for f in board.GetFootprints():
         # Models() hands out copies, so rebuild the list with the paths resolved.
         models = list(f.Models())
@@ -58,11 +58,11 @@ def main(src, dst, marbast, kbd, pkg3d, standin, klp, *opts):
             f.Models().push_back(m)
         if "SW_choc" in f.GetFPIDAsString():
             keys.append((f.GetReference(), f.GetPosition(), f.GetOrientationDegrees()))
-        elif f.GetReference() == "TP1":
-            tp = f
-        elif f.GetReference() == "TP2":
+        elif f.GetValue() == "SK8707-01 sensor":
+            sensors.append(f)
+        elif f.GetValue() == "SK8707-01 driver":
             f.Models().push_back(model(os.path.join(standin, "driver.wrl")))
-    if tp is not None:
+    for tp in sensors:
         # The board reaches 10.84 mm from the stem on its pad side and 7.45 mm on
         # the other (tools/make_footprints.py); 3D y points the other way.
         tp.Models().push_back(model(os.path.join(standin, "sensor.wrl"), offset=(0.0, -(10.84 - 7.45) / 2)))
