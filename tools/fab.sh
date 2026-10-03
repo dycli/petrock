@@ -18,3 +18,4 @@ export_board pcb "pcb/corne choc.kicad_pcb"
 export_board plate-left "pcb/corne choc plate.kicad_pcb"           # drawn as a right half; flip it
 export_board plate-right "pcb/corne choc plate right.kicad_pcb"    # clears the trackpoint sensor
 export_board bottom "pcb/bottom.kicad_pcb"
+bin/kpy tools/jlc.py "pcb/corne choc.kicad_pcb" fab     # assembly BOM + placement for JLC's back-side SMD parts
