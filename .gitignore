@@ -3,3 +3,4 @@ upstream/
 fp-info-cache
 *-backups/
 build/
+fab/
