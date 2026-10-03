@@ -9,6 +9,11 @@ trackpoint holds the outer key's place, and the arc is the left one mirrored.
 The inner key is split into two 1u keys, stacked one choc row (17 mm) apart
 along the inner key's own up-down axis; the lower one is the arc position.
 
+The whole cluster sits so the bottom index key reads as the arc's step before
+the middle key, turned to come down from above: the middle key meets it at the
+same corner gap, opening at the same 15 degrees, as it meets the inner key.
+Upstream sits SHIFT short of that.
+
 The board edge around the thumb keys runs EDGE_GAP from their keycaps.
 """
 import math
@@ -27,6 +32,8 @@ HALVES = {
 }
 # Upstream centre of the old 1.5u inner key, which the split keys replace.
 OLD_INNER = {"left": (133.25, 123.32), "right": (166.0625, 123.32)}
+# Upstream centre of the bottom key of the inner index column, above the middle thumb key.
+INDEX_BOTTOM = {"left": (116.5, 99.93), "right": (182.8125, 99.93)}
 
 
 def rot(x, y, deg):
@@ -40,8 +47,15 @@ def down(deg):
     return rot(0, 1, deg)
 
 
-def keys(half):
-    """[(centre, orientation)] for the outer, middle, lower inner and upper inner keys."""
+def corner(c, deg, sx, sy):
+    """A keycap's corner: sx, sy = -1/+1 in the key's own frame."""
+    dx, dy = rot(sx * CAP_W / 2, sy * CAP_H / 2, deg)
+    return (c[0] + dx, c[1] + dy)
+
+
+def arc(half):
+    """Upstream-placed arc: [(centre, orientation)] for the outer, middle, lower
+    inner and upper inner keys."""
     h = HALVES[half]
     (x0, y0, d0), (x1, y1, d1) = h["outer"], h["middle"]
     step = d1 - d0
@@ -50,6 +64,28 @@ def keys(half):
     ux, uy = down(deg)
     upper = (lower[0] - ROW_PITCH * ux, lower[1] - ROW_PITCH * uy)
     return [((x0, y0), d0), ((x1, y1), d1), (lower, deg), (upper, deg)]
+
+
+def shift(half):
+    """Move from the upstream-placed arc to the index-aligned one."""
+    _, (c1, d1), (c2, d2), _ = arc(half)
+    side = 1 if half == "left" else -1            # +x is inward on the left half
+    # Middle -> inner: the middle key's bottom inner-side corner to the inner
+    # key's bottom outer-side corner, in the middle key's frame.
+    a, b = corner(c1, d1, side, 1), corner(c2, d2, -side, 1)
+    hinge = rot(b[0] - a[0], b[1] - a[1], -d1)
+    # Index -> middle is that pairing turned a quarter, from beside to below:
+    # the index key's bottom outer-side corner to the middle key's top one.
+    hx, hy = rot(*hinge, -90 * side)
+    ix, iy = corner(INDEX_BOTTOM[half], 0.0, -side, 1)
+    tx, ty = corner(c1, d1, -side, -1)
+    return (ix + hx - tx, iy + hy - ty)
+
+
+def keys(half):
+    """[(centre, orientation)] for the outer, middle, lower inner and upper inner keys."""
+    sx, sy = shift(half)
+    return [((c[0] + sx, c[1] + sy), d) for c, d in arc(half)]
 
 
 def inner_keys(half):

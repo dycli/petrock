@@ -143,6 +143,10 @@ def main(src, pcb_path, dst, dst_right):
             tmpl = f
         elif abs(x - tx - PLATE_DX) < 0.05 and abs(y - ty) < 0.05:
             slot = f
+    # The outer and middle thumb holes move with the cluster (tools/thumbs.py).
+    sx, sy = thumbs.shift("right")
+    for f in (slot, tmpl):
+        f.Move(pcbnew.VECTOR2I(MM(sx), MM(sy)))
     outline = pcbnew.SHAPE_POLY_SET()
     board.GetBoardPolygonOutlines(outline, False)
     plate = pcbnew.SHAPE_POLY_SET()

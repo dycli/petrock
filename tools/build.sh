@@ -29,7 +29,7 @@ bin/kpy tools/underglow.py $B/s1.kicad_pcb $B/s1.kicad_pcb
 refill $B/s1.kicad_pcb
 rm -f $B/affected.txt
 AFFECTED_OUT=$B/affected.txt bin/kpy tools/cleanup.py $B/s1.kicad_pcb $B/s2.kicad_pcb \
-  J1,J3,TP1,TP2,TP3,TP4,LED5,LED32,SW21,SW42,SW43,SW44,D21,D42,D45,D46,LED27,LED54,LED55,LED56 >$B/cleanup.log
+  J1,J3,TP1,TP2,TP3,TP4,LED5,LED32,SW19,SW20,D19,D20,LED25,LED26,SW41,D41,LED53,SW21,SW42,SW43,SW44,D21,D42,D45,D46,LED27,LED54,LED55,LED56 >$B/cleanup.log
 cp $B/s2.kicad_pcb $B/r.kicad_pcb
 route() { bin/kpy tools/maze.py $B/r.kicad_pcb $B/r.kicad_pcb "$@"; }
 # The sensor-to-driver links first (each a via straight through, front pad to
@@ -66,6 +66,7 @@ for pass in 1 2 3 4 5; do
     [ "$(python3 -c "import json;print(len([u for u in json.load(open('$B/drc.json')).get('unconnected_items',[]) if not all(i['description'].startswith('Zone') for i in u['items'])]))")" = 0 ] && break
   bin/kpy tools/autoconnect.py $B/out.kicad_pcb
 done
+bin/kpy tools/angle_marks.py $B/out.kicad_pcb pcb   # 15-degree marks in the thumb gaps (silkscreen)
 bin/kcli pcb drc --refill-zones --save-board -o $B/drc.rpt $B/out.kicad_pcb >/dev/null 2>&1 || true
 bin/kcli pcb drc --format json -o $B/drc.json $B/out.kicad_pcb >/dev/null 2>&1 || true
 bin/kcli pcb drc --refill-zones --save-board --format json -o $B/drc_up.json $B/upstream.kicad_pcb >/dev/null 2>&1 || true
@@ -86,6 +87,7 @@ else
   PLATES=("$OUT/$NAME plate.kicad_pcb" "$OUT/$NAME plate right.kicad_pcb")
 fi
 for p in "${PLATES[@]}"; do
+  bin/kpy tools/angle_marks.py "$p" plate
   [ "$p" = "$PRO" ] || [ "${p%.kicad_pcb}.kicad_pro" = "$PRO" ] || cp "$PRO" "${p%.kicad_pcb}.kicad_pro"
   bin/kcli pcb drc --refill-zones --save-board -o "$B/$(basename "${p%.kicad_pcb}")_drc.rpt" "$p" >/dev/null 2>&1 || true
 done

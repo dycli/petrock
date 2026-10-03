@@ -8,12 +8,16 @@ f149b9b), licensed CC-BY-SA-4.0. This derivative uses the same licence.
 
 v1 (tag `v1`) keeps the stock outline and only adds the trackpoint. v2 adds:
 
-- Both halves 6.2 mm wider along the inner edge; the TRRS jacks face the top
-  edge in that strip, beside each controller.
+- Both halves about 6.9 mm wider along the inner edge (enough for the upper
+  inner thumb key to keep its edge gap); the TRRS jacks face the top edge in
+  that strip, centred between each controller and the edge.
 - The inner 1.5u thumb key on each half becomes two 1u keys. The thumb keys
   sit on one arc (`tools/thumbs.py`): outer key level, middle key turned 15
   degrees, lower inner key turned and moved by the same step again (30
-  degrees), so their corners line up. A new key sits one row above the lower
+  degrees), so their corners line up. The whole cluster sits 1.37 mm further
+  in and 0.98 mm higher than stock, so the middle key meets the bottom index
+  key the way it meets the inner key: the same corner gap opening at 15
+  degrees. The trackpoint moves with it. A new key sits one row above the lower
   inner key, on its row's spare column (col2). Each gets a diode and a per-key
   LED (inserted in the RGB chain after the moved key's LED). Every switch faces
   the same way, so all per-key LEDs sit on the same side.

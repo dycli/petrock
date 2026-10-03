@@ -36,7 +36,7 @@ EOF
 done
 # The assembled board: both switch plates in place.
 for n in demo-plate demo-plate-plain; do
-  $K pcb export step --board-only --user-origin 0x0mm -f -o $B/$n.step $B/$n.kicad_pcb >/dev/null 2>&1
+  $K pcb export step --board-only --include-silkscreen --user-origin 0x0mm -f -o $B/$n.step $B/$n.kicad_pcb >/dev/null 2>&1
 done
 bin/kpy tools/demo_plates.py $B/demo.kicad_pcb "$PWD/$B/demo-plate.step" "$PWD/$B/demo-plate-plain.step" $B/demo-assembled.kicad_pcb >/dev/null
 # And without the OLED modules (they're optional).

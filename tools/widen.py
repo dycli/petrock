@@ -21,13 +21,14 @@ import thumbs
 
 MM = pcbnew.FromMM
 
-WIDEN = 6.2
+MIN_WIDEN = 6.2         # room beside each controller for its jack
 SPLIT_X = 149.6          # halves are left/right of this line upstream
-RIGHT_DX = 2 * WIDEN     # keeps the upstream gap between the halves
+RIGHT_DX = 12.4          # right half's shift in the file; keeps the halves apart
 
 TOP_EDGE = 56.96
 JACK_PORT = 0.25         # jack origin sits this far inside its port edge
-# Beside each controller; pads clear the new edge by >=0.5 mm (board rule).
+# Beside each controller, as placed for MIN_WIDEN (pads clear the edge by about
+# 1 mm); any extra widening splits evenly either side of the jack (jack_x).
 JACKS = {"J1": 149.39, "J3": 149.92}
 # Left half, upstream frame: the outer side edge (straight part, bottom corner
 # arc, and the bottom edge's end at that arc), and the outer column's centre.
@@ -53,6 +54,27 @@ EDGES = {
     "left": (+1, ((146.71, 57.46), (146.79, 117.4)), ((146.21, 56.96), (146.71, 57.46)), (146.21, 56.96)),
     "right": (-1, ((152.6, 57.46), (152.52, 117.4)), ((152.6, 57.46), (153.1, 56.96)), (153.1, 56.96)),
 }
+
+
+def inner_widen():
+    """How far the straight inner edge moves out: MIN_WIDEN, or more if the upper
+    inner thumb key's keycap would otherwise come closer than thumbs.EDGE_GAP."""
+    _, _, _, (c, deg) = thumbs.keys("left")
+    r = thumbs.CAP_R
+    reach = max(c[0] + thumbs.rot(sx * (thumbs.CAP_W / 2 - r), sy * (thumbs.CAP_H / 2 - r), deg)[0]
+                for sx in (-1, 1) for sy in (-1, 1)) + r     # rounded keycap's inner-most point
+    (x0, y0), (x1, y1) = EDGES["left"][1]
+    edge_x = x0 + (x1 - x0) * (c[1] - y0) / (y1 - y0)        # the (near-vertical) edge at that height
+    return max(MIN_WIDEN, round(reach + thumbs.EDGE_GAP - edge_x, 3))
+
+
+WIDEN = inner_widen()
+
+
+def jack_x(ref):
+    """The jack's x in the upstream frame, kept centred in its widened strip."""
+    extra = (WIDEN - MIN_WIDEN) / 2
+    return JACKS[ref] + (extra if ref == "J1" else -extra)
 
 
 def rx(p):
@@ -267,7 +289,8 @@ def main(src, dst):
     widen(board, "right")
     outer_edge(board, "left")
     outer_edge(board, "right")
-    for ref, x in JACKS.items():
+    for ref in JACKS:
+        x = jack_x(ref)
         (fp,) = index[ref]
         fp.SetOrientationDegrees(0)
         # The ground pad sits too close to the edge and the other pads for
