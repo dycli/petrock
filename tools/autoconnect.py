@@ -1,5 +1,6 @@
 """Route every connection DRC reports as missing until none are left or no
-progress is made. Each DRC pass routes one missing connection per net (a
+progress is made; a connection that is boxed in gets the way cleared by
+tools/ripup.py and the cleared nets rerouted. Each DRC pass routes one missing connection per net (a
 second one on the same net may already be closed by the first).
 
 usage: autoconnect.py BOARD   (edits BOARD in place)
@@ -15,7 +16,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 KCLI = os.path.join(ROOT, "bin", "kcli")
 KPY = os.path.join(ROOT, "bin", "kpy")
-WIDTH = {"GND": 0.5, "GNDA": 0.5, "Net-(D43-K)": 0.5, "Net-(D44-K)": 0.5, "VCC": 0.3, "VDD": 0.3}
+MAX_RIPUPS = 12           # per run: bounds any rip-up/reroute ping-pong
+WIDTH = {"GND": 0.5, "GNDA": 0.5, "VCC": 0.3, "VDD": 0.3}
 
 
 def missing(board, refill=False):
@@ -40,6 +42,7 @@ def end(item):
 
 
 def main(board):
+    ripups = 0
     failed = set()
     tried = set()      # a pair still open after being routed once won't close by retrying
     refill = False
@@ -82,6 +85,20 @@ def main(board):
             out = (r.stdout + r.stderr).strip().splitlines()
             print(out[-1] if out else f"{net}: ?", file=sys.stderr, flush=True)
             if "no route" in r.stdout + r.stderr or r.returncode:
+                # Boxed in: clear the way, route it, and let the next DRC pass
+                # pick up whatever was ripped up.
+                if ripups < MAX_RIPUPS:
+                    rip = subprocess.run([KPY, os.path.join(HERE, "ripup.py"), board, net, str(width), ea, eb],
+                                         capture_output=True, text=True)
+                    if rip.stdout.strip().splitlines()[-1:] not in ([], ["0"]):
+                        ripups += 1
+                        r = subprocess.run([KPY, os.path.join(HERE, "maze.py"), board, board, net, str(width), ea, eb],
+                                           capture_output=True, text=True)
+                        print(f"{net}: ripped up {rip.stdout.strip().splitlines()[-1]} in the way, then "
+                              + ("no route" if "no route" in r.stdout + r.stderr else "routed"), file=sys.stderr, flush=True)
+                        if "no route" not in r.stdout + r.stderr and not r.returncode:
+                            tried.discard((net, ea, eb))
+                            continue
                 failed.add((net, ea, eb))
     left = [v for v in missing(board)]
     print(f"{len(left)} unconnected left", file=sys.stderr)

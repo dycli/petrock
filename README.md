@@ -1,82 +1,92 @@
-# Corne Choc with an outer-thumb trackpoint (v2.1)
+# Petrock
+
+A split 41- or 40-key choc keyboard with a trackpoint in place of an outer
+thumb key: **Petrock-41** has one, at the right thumb; **Petrock-40** has one on
+each half.
 
 Based on holykeebs' Corne Choc PCB and plate from
 [idank/keyboards](https://github.com/idank/keyboards) (`corne/choc`, commit
 f149b9b), licensed CC-BY-SA-4.0. This derivative uses the same licence.
 
-## Changes from upstream
+## Changes from the Corne Choc
 
-v1 (tag `v1`) keeps the stock outline and only adds the trackpoint. v2 adds:
+The board is built from the stock file with as few changes to its copper as
+the layout allows: parts move with their tracks, only copper that ends up off
+the board or in a new clash is cut, and only what is then open is routed
+(see Build). About 60% of the stock copper stays, in place or carried along.
 
-- Both halves about 6.9 mm wider along the inner edge (enough for the upper
-  inner thumb key to keep its edge gap); the TRRS jacks face the top edge in
-  that strip, centred between each controller and the edge.
-- The inner 1.5u thumb key on each half becomes two 1u keys. The thumb keys
-  sit on one arc (`tools/thumbs.py`): outer key level, middle key turned 15
-  degrees, lower inner key turned and moved by the same step again (30
-  degrees), so their corners line up. The whole cluster sits 1.37 mm further
-  in and 0.98 mm higher than stock, so the middle key meets the bottom index
-  key the way it meets the inner key: the same corner gap opening at 15
-  degrees. The trackpoint moves with it. A new key sits one row above the lower
-  inner key, on its row's spare column (col2). Each gets a diode and a per-key
-  LED (inserted in the RGB chain after the moved key's LED). Every switch faces
-  the same way, so all per-key LEDs sit on the same side.
-- Keycaps sit 1.15 mm from the edge wherever it follows them, which leaves
-  every hot-swap socket pad 0.33 mm from the edge (stock: 0.95 mm, and 0.13 mm
-  on the right outer column). The outer side edges move out to that gap. The
-  edge round the thumbs is redrawn from the keys, the same on both halves:
-  beside and under the inner keys at that gap, rounding the bottom tip about
-  the keycap's corner; under the middle and outer keys one level line below the
-  middle keycap's lowest point, which leaves the trackpoint room.
-- Peaked top edges: straight from each top corner to the middle-finger column.
-- The trackpoint from v1: Sprintek SK8707-01-004 at the right outer thumb key,
-  sensor on the front with its stem 3.4 mm below the old key centre (the
-  board's long end above it), driver on the back, PS/2 on controller pins 11/12
-  (GP8/GP9). LED52 under it is removed and the RGB chain bridged.
-- The underglow LED beside the trackpoint driver (LED32) and its left twin
-  (LED5) move to open board between the bottom row's LEDs, mirrored, so
-  the driver's hand-soldered pads have room.
-- The holykeebs and Corne logos are removed, and so are the mounting holes for
-  holykeebs' OLED cover (the switch plate covers them; the cover isn't used).
-- Switch plates regenerated: the left one is the right-half design flipped;
-  the right one also has an opening round the trackpoint sensor, which stands
-  taller than the gap under the plate. A new FR4 bottom plate fits the wider
+- **No lighting.** Every per-key and underglow LED, the LED supply diodes and
+  the LED wiring are gone (`tools/no_leds.py`). An RGB version may follow.
+- **Exact stagger.** Rows exactly 17 mm apart, each column's top key a whole
+  number of 2.37 mm steps below the middle finger's (`tools/stagger.py`;
+  stock is off by up to 0.02 mm).
+- **Five columns.** The outer pinky column goes. The pinky column moves up to
+  one step below the ring column and gains a fourth key (the old outer top
+  key); the ring column gains one too (the old outer bottom key). Each joins
+  the column wire it lands on, in the thumb row (row 3).
+- **Thumb cluster.** Each thumb key turns 15 degrees from its neighbour about a
+  hinge where their facing corners sit 0.5 mm apart, starting from the bottom
+  inner-index key (`tools/thumbs.py`). The 1.5u inner key becomes two 1u keys;
+  the new upper one takes the thumb row's last free column (col 0).
+- **Trackpoint.** Sprintek SK8707-01-004 at the outer thumb key: sensor on the
+  front, nub centred on where the key was, driver on the back, PS/2 on
+  controller pins 11/12 (GP8/GP9), 3.3 V from the OLED header
+  (`tools/outer_thumb.py`, footprints from `tools/make_footprints.py`).
+- **Outline.** Drawn from the keys (`tools/outline.py`): a flat top 1.15 mm
+  above the middle column, 7.5-degree slopes to either side, a straight outer
+  side, one 7.5-degree bottom edge, and the inner side widened for the upper
+  thumb key (`tools/widen.py`). Keycaps sit 1.15 mm from the edge wherever it
+  follows them.
+- **Controller corner.** The controller and OLED header drop 3.35 mm under the
+  inner slope; the TRRS jack faces the top edge beside them, with the reset
+  button below it (`tools/inner_strip.py`).
+- The holykeebs and Corne logos and the OLED-cover holes are removed; the
+  switch plates carry the thumb-cluster logo (`tools/logo.py`).
+- Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40)
+  has an opening for the trackpoint sensor; a new FR4 bottom plate fits the
   outline.
 
 ## Build
 
-`tools/build.sh` regenerates the boards from upstream: outline and part edits,
-cleanup, routing (`tools/maze.py`, a small two-layer grid router, driven by
-`tools/autoconnect.py` from DRC's missing connections), pruning, DRC with a
-diff against upstream's own report, then the plates and `printout.pdf` (print
-it with scaling off, e.g. `lp -o print-scaling=none`, for true size).
-`tools/fab.sh` writes Gerber and drill zips and JLC's assembly BOM and
-placement to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.
+`tools/build.sh [single|dual]` regenerates a board from the stock file:
 
-Two variants build from the same steps: `single` (the default; trackpoint on
-the right) and `dual` (`tools/build.sh dual`, `tools/fab.sh dual`: trackpoints
-on both outer thumb keys, into `pcb/dual/`, `fab/dual/` and
-`printout-dual.pdf`). The dual board's two switch plates are one design, with
-the sensor opening, flipped for the left half.
+1. **Place:** strip the lighting, then move every part to the layout, dragging
+   its copper (`tools/parts.py drag`).
+2. **Fit:** nudge copper the new edge crowds back inside it (`tools/edge_fit.py`).
+3. **Trim:** cut copper off the board or in a clash the stock board didn't
+   already have (`tools/trim.py`; stock already breaks DRC in places, e.g. by
+   its LED windows).
+4. **Route:** the trackpoint links (`tools/tp_links.py`), then everything open
+   (`tools/autoconnect.py` driving `tools/maze.py`), never ripping up stock
+   copper; strip dead ends; diff DRC against the stock board's
+   (`tools/drcdiff.py`) and report how much stock copper is unchanged
+   (`tools/reuse.py`).
 
-Footprints come from `tools/make_footprints.py`, generated from Sprintek
-datasheet DS0048 v1.04 (`ref/`, not committed).
+Then `tools/plates.sh` makes the plates and the 1:1 printout (print it with
+scaling off, e.g. `lp -o print-scaling=none`). `tools/fab.sh [single|dual]`
+writes Gerber and drill zips and JLC's assembly BOM and placement (diodes and
+hot-swap sockets) to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.
+
+Outputs: `pcb/petrock-41*.kicad_pcb` and `pcb/bottom.kicad_pcb`;
+`pcb/dual/petrock-40*.kicad_pcb` and `pcb/dual/bottom.kicad_pcb`.
+
+## Firmware
+
+- Matrix (each half, right with `_r` nets): pinky fourth key row 3 col 1; ring
+  fourth key row 3 col 2; upper inner thumb row 3 col 0; rows 0-2 of col 0
+  are empty. The trackpoint replaces the outer thumb key (row 3 col 3).
+- PS/2: `PS2_DATA_PIN GP8`, `PS2_CLOCK_PIN GP9`; the sensor's pad edge faces
+  the controller (if the axes come out turned, `PS2_MOUSE_ROTATE` fixes it).
+- No RGB.
 
 ## Open items
 
-- **Driver footprint:** Sprintek doesn't draw the detached driver on its own.
-  Its footprint comes from the integrated-module drawing, checked against
-  holykeebs' top-view photo (`ref/sk8707-01-004-top.png`): 23 x 14.5 mm,
-  sensor-link pads at 2.5 mm pitch in the same order as the sensor's, pin 1 at
-  the left. The host pins follow the drawing's 1.80 mm pitch, with 1.0 mm pads
-  (0.8 mm between them, for hand soldering); holykeebs' photo measured 1.73-1.76
-  mm, most likely photo scale.
-- **Under-board height:** check that the driver (about 2 mm) clears holykeebs'
-  case or bottom plate.
-- **Firmware:** override `PS2_DATA_PIN GP8` / `PS2_CLOCK_PIN GP9`; the
-  sensor's pad edge faces the controller, as on v2 (if the axes come out
-  turned, `PS2_MOUSE_ROTATE` fixes it); keymap
-  gains the two new thumb keys (row 3, col 2) and loses the right outer thumb;
-  RGB layout gains LED55/LED56 and loses LED52.
-- **Standoff length** for the plate/PCB/bottom sandwich.
-- **Schematic:** still upstream's.
+- **Driver footprint:** Sprintek doesn't draw the detached driver on its own;
+  it comes from the integrated-module drawing, checked against holykeebs'
+  top-view photo (`ref/`, not committed): 23 x 14.5 mm, host pins at 1.80 mm
+  pitch with 1.0 mm pads for hand soldering.
+- **Under-board height:** check that the driver (about 2 mm) clears the
+  bottom plate.
+- **Standoff length** for the plate/PCB/bottom sandwich (M2 3 mm both sides
+  expected for the 1.6 mm FR4 bottom).
+- **Schematic:** still the Corne Choc's.

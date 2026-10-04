@@ -5,8 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 VARIANT=${1:-single}
 case $VARIANT in
-  single) F=fab;      P=pcb;      NAME="corne choc" ;;
-  dual)   F=fab/dual; P=pcb/dual; NAME="corne choc dual" ;;
+  single) F=fab;      P=pcb;      NAME="petrock-41" ;;
+  dual)   F=fab/dual; P=pcb/dual; NAME="petrock-40" ;;
   *) echo "unknown variant $VARIANT" >&2; exit 1 ;;
 esac
 mkdir -p $F

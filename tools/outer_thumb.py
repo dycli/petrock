@@ -1,10 +1,10 @@
 """Put an SK8707-01 trackpoint at a half's outer thumb key (right, or both).
 
-Removes the key, its diode and its per-key LED (hidden under the sensor; the RGB
-chain is bridged and its old link rerouted). The sensor sits flat on the front
-over the key's place, its stem STEM_DROP below the key's centre, and comes up
-through the plate's opening. The driver sits flat on the back, directly
-beneath. Its PS/2 lines go to that half's controller pins 11/12 (GP8/GP9), its
+Removes the key and its diode. The sensor sits flat on the front
+over the key's place, the board centred on the key (its stem STEM_DROP below
+the key's centre), and comes up through the plate's opening. The driver sits
+flat on the back beneath it, turned across so it is narrower than a key, its
+host pins facing the controller. Its PS/2 lines go to that half's controller pins 11/12 (GP8/GP9), its
 power to the OLED header's 3.3 V pin. Both halves use the same placement: the
 outline round the outer thumb is mirrored, and the parts are symmetric enough.
 
@@ -21,19 +21,21 @@ import pcbnew
 MM = pcbnew.FromMM
 LIB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib", "sk8707.pretty")
 
-# The sensor board covers the key's centre -7.45..+10.84 mm (tools/widen.py shapes
-# the edge round that). Pad edge up puts the stem STEM_DROP below the key's
-# centre, closer to the thumb.
+# The sensor board reaches SENSOR_ABOVE above its stem and SENSOR_BELOW below it,
+# pad edge up; STEM_DROP centres it on the key.
 SENSOR_ROT = 180.0               # pad edge up
-STEM_DROP = 10.84 - 7.45
-DRIVER_ROT = 0.0                 # sensor-link edge up, beside the sensor's pads
-DRIVER_OFFSET = (0.0, -1.37)     # from the key's centre, on the back; clears the diagonal edge
+SENSOR_HALF_W, SENSOR_ABOVE, SENSOR_BELOW = 6.6, 10.84, 7.45
+STEM_DROP = (SENSOR_ABOVE - SENSOR_BELOW) / 2
+# The driver board (23 x 14.5 mm), long side up-down; its centre this far from
+# the key's centre (x toward the controller).
+DRIVER_HALF_L, DRIVER_HALF_W = 11.5, 7.25
+DRIVER_OFFSET = (0.0, -0.25)
 
 HALVES = {
-    # key, its diode and LED; controller; sensor and driver refs; ground and 3.3 V nets; net suffix
-    "right": dict(key="SW40", diode="D40", led="LED52", controller="U2", sensor="TP1", driver="TP2",
+    # key and its diode; controller; sensor and driver refs; ground and 3.3 V nets; net suffix
+    "right": dict(key="SW40", diode="D40", controller="U2", sensor="TP1", driver="TP2",
                   ground="GNDA", power="VDD", suffix=""),
-    "left": dict(key="SW19", diode="D19", led="LED25", controller="U1", sensor="TP3", driver="TP4",
+    "left": dict(key="SW19", diode="D19", controller="U1", sensor="TP3", driver="TP4",
                  ground="GND", power="VCC", suffix="_L"),
 }
 
@@ -88,29 +90,19 @@ def place(board, h):
         return f
 
     sfx = h["suffix"]
-    driver_nets = {"1": h["ground"], "2": "TP_DATA" + sfx, "3": "TP_CLK" + sfx, "5": h["power"]}  # 4 RST, 6-8 buttons: unused
-    controller_nets = {"11": "TP_DATA" + sfx, "12": "TP_CLK" + sfx}                               # pins 11/12 = GP8/GP9
+    # 4 (reset: the driver resets itself) and 6-8 (buttons) unused.
+    driver_nets = {"1": h["ground"], "2": "TP_DATA" + sfx, "3": "TP_CLK" + sfx, "5": h["power"]}
+    controller_nets = {"11": "TP_DATA" + sfx, "12": "TP_CLK" + sfx}       # pins 11/12 = GP8/GP9
     link_nets = {f"S{i}": f"TP_S{i}{sfx}" for i in range(1, 5)}
 
-    key = mm(one(h["key"]).GetPosition())
+    p = one(h["key"]).GetPosition()
+    key = (pcbnew.ToMM(p.x), pcbnew.ToMM(p.y))           # unrounded: the sensor centring is exact
     stem = (key[0], key[1] + STEM_DROP)
-    driver_centre = (key[0] + DRIVER_OFFSET[0], key[1] + DRIVER_OFFSET[1])
+    inward = 1 if pcbnew.ToMM(one(h["controller"]).GetPosition().x) > key[0] else -1
+    driver_centre = (key[0] + inward * DRIVER_OFFSET[0], key[1] + DRIVER_OFFSET[1])
 
-    # RGB chain: the LED's output net joins its input net, and the input net's
-    # old copper (the link into the LED) goes; the router redraws the link.
-    pads = {p.GetNumber(): p.GetNetname() for p in one(h["led"]).Pads()}
-    chain_in, chain_out = pads["4"], pads["2"]
-    for ref in (h["key"], h["diode"], h["led"]):
+    for ref in (h["key"], h["diode"]):
         board.Remove(one(ref))
-    chain = board.FindNet(chain_in)
-    for f in board.GetFootprints():
-        for p in f.Pads():
-            if p.GetNetname() == chain_out:
-                p.SetNet(chain)
-    old_link = [t for t in board.GetTracks() if t.GetNetname() == chain_in]
-    for t in board.GetTracks():
-        if t.GetNetname() == chain_out:
-            t.SetNet(chain)
 
     for p in one(h["controller"]).Pads():
         if p.GetNumber() in controller_nets:
@@ -126,11 +118,19 @@ def place(board, h):
             p.SetNet(net(board, link_nets[p.GetNumber()]))
     board.Add(sensor)
 
-    driver = load("SK8707-01_driver")
-    driver.SetReference(h["driver"])
-    driver.SetValue("SK8707-01 driver")
-    driver.SetOrientationDegrees(DRIVER_ROT)
-    driver.SetPosition(V(*driver_centre))
+    cx, cy = driver_centre
+    for turn in (90.0, 270.0):
+        driver = load("SK8707-01_driver")
+        driver.SetReference(h["driver"])
+        driver.SetValue("SK8707-01 driver")
+        driver.SetOrientationDegrees(turn)
+        driver.SetPosition(V(*driver_centre))
+        board.Add(driver)
+        driver.Flip(V(*driver_centre), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)  # needs the board's layer stack
+        host_x = sum(pcbnew.ToMM(p.GetPosition().x) for p in driver.Pads() if p.GetNumber() in set("12345678")) / 8
+        if (host_x - cx) * inward > 0:
+            break
+        board.Remove(driver)
     for p in driver.Pads():
         name = driver_nets.get(p.GetNumber()) or link_nets.get(p.GetNumber())
         if name:
@@ -139,13 +139,12 @@ def place(board, h):
             # Ground joins by a routed track: the pour's thermal spokes can't
             # all reach it between the castellations.
             p.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_NONE)
-    board.Add(driver)
-    driver.Flip(V(*driver_centre), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)  # needs the board's layer stack
 
     # The driver's underside carries exposed connector pads: no copper under it
-    # on the back apart from its own castellations.
-    cx, cy = driver_centre
-    keepout(board, pcbnew.B_Cu, [(cx - 11.0, cy - 5.6), (cx + 11.0, cy - 5.6), (cx + 11.0, cy + 6.0), (cx - 11.0, cy + 6.0)],
+    # on the back apart from its own castellations (5.6 mm in from the link
+    # side, 6.0 from the host side, 11 mm either way along).
+    near, far = (-5.6, 6.0) if inward > 0 else (-6.0, 5.6)
+    keepout(board, pcbnew.B_Cu, [(cx + near, cy - 11.0), (cx + far, cy - 11.0), (cx + far, cy + 11.0), (cx + near, cy + 11.0)],
             tracks=True, vias=True, fills=True)
 
     # Nothing but the sensor's own links under the sensor on the front.
@@ -153,12 +152,10 @@ def place(board, h):
     keepout(board, pcbnew.F_Cu, [(sx - 6.85, sy - 7.3), (sx + 6.85, sy - 7.3), (sx + 6.85, sy + 7.7), (sx - 6.85, sy + 7.7)],
             tracks=True, vias=True)
 
-    # Back copper just below the driver's host pins, so they have room to get
+    # Back copper just beyond the driver's host pins, so they have room to get
     # out; the router puts back whatever this cuts.
-    escape = pcbnew.BOX2I(V(cx - 11.5, cy + 6.0), V(23.0, 4.0))
-    old = {t.m_Uuid.AsString() for t in old_link}
-    doomed = old_link + [t for t in board.GetTracks()
-                         if t.IsOnLayer(pcbnew.B_Cu) and t.HitTest(escape, False) and t.m_Uuid.AsString() not in old]
+    escape = pcbnew.BOX2I(V(cx + 6.0 if inward > 0 else cx - 10.0, cy - 11.5), V(4.0, 23.0))
+    doomed = [t for t in board.GetTracks() if t.IsOnLayer(pcbnew.B_Cu) and t.HitTest(escape, False)]
     for t in doomed:          # last: removing tracks invalidates other handles
         board.Remove(t)
 

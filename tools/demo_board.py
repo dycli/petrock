@@ -15,6 +15,9 @@ MM = pcbnew.FromMM
 # KLP Lame (choc stem, choc size) keycaps: thumb caps on the thumb keys, homing
 # caps on F and J. KLP_Z puts the cap's top about 10 mm above the PCB.
 KLP_Z = 4.33
+# Black solder mask, opaque like the real thing (KiCad's stock "Black" lets the
+# copper tint it); the plates in tools/demo.sh use the same.
+MASK = "#141414FF"
 THUMBS = {"SW19", "SW20", "SW21", "SW43", "SW41", "SW42", "SW44"}
 HOMING = {"SW11", "SW32"}
 
@@ -60,12 +63,13 @@ def main(src, dst, marbast, kbd, pkg3d, standin, klp, *opts):
             keys.append((f.GetReference(), f.GetPosition(), f.GetOrientationDegrees()))
         elif f.GetValue() == "SK8707-01 sensor":
             sensors.append(f)
+        elif f.GetReference() in ("U1", "U2"):        # the stock model is one flat grey
+            f.Models().clear()
+            f.Models().push_back(model(os.path.join(standin, "controller.wrl")))
         elif f.GetValue() == "SK8707-01 driver":
             f.Models().push_back(model(os.path.join(standin, "driver.wrl")))
     for tp in sensors:
-        # The board reaches 10.84 mm from the stem on its pad side and 7.45 mm on
-        # the other (tools/make_footprints.py); 3D y points the other way.
-        tp.Models().push_back(model(os.path.join(standin, "sensor.wrl"), offset=(0.0, -(10.84 - 7.45) / 2)))
+        tp.Models().push_back(model(os.path.join(standin, "sensor.wrl")))   # drawn in the footprint's frame
         tp.Models().push_back(model(os.path.join(standin, "nub.wrl")))
     # Switch + keycap on the top side for every key (the key footprints sit on the
     # back, where the hot-swap sockets are).
@@ -88,7 +92,8 @@ def colour_stackup(path):
     stackup isn't exposed to Python, so this edits the saved file.)"""
     import re
     text = open(path).read()
-    for layer, colour in (("F.Mask", "Black"), ("B.Mask", "Black"), ("F.SilkS", "White"), ("B.SilkS", "White")):
+    for layer, colour in (("F.Mask", MASK), ("B.Mask", MASK), ("F.SilkS", "White"), ("B.SilkS", "White"),
+                          ("dielectric 1", MASK)):     # the body too: 3D exports (GLB) show it under the mask
         pat = re.compile(r'(\(layer "' + re.escape(layer) + r'"\s*\(type "[^"]*"\))(\s*\(color "[^"]*"\))?')
         text = pat.sub(lambda m: m.group(1) + f' (color "{colour}")', text, count=1)
     open(path, "w").write(text)

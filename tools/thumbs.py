@@ -9,10 +9,9 @@ trackpoint holds the outer key's place, and the arc is the left one mirrored.
 The inner key is split into two 1u keys, stacked one choc row (17 mm) apart
 along the inner key's own up-down axis; the lower one is the arc position.
 
-The whole cluster sits so the bottom index key reads as the arc's step before
-the middle key, turned to come down from above: the middle key meets it at the
-same corner gap, opening at the same 15 degrees, as it meets the inner key.
-Upstream sits SHIFT short of that.
+The bottom index key reads as the arc's step before the middle key, turned to
+come down from above. Every step turns 15 degrees about a hinge where the two
+keys' facing corners sit level, HINGE_GAP apart, as between ordinary columns.
 
 The board edge around the thumb keys runs EDGE_GAP from their keycaps.
 """
@@ -20,10 +19,14 @@ import math
 
 ROW_PITCH = 17.0                     # choc 18 x 17 mm spacing: rows are 17 mm apart
 CAP_W, CAP_H = 17.5, 16.5            # keycap across / up-down, in the key's own frame
-CAP_R = 1.0                          # keycap corner radius
+# Keycap corner radius the edges are worked out for: none, i.e. square corners,
+# the worst case. Gaps are then set by the keycap's edges, and any real cap,
+# however rounded, sits at least EDGE_GAP from the board edge everywhere.
+CAP_R = 0.0
 # Keycap to board edge wherever the edge follows keys; leaves every hot-swap
 # socket pad 0.33 mm from the edge (the stock outer column had 0.95: 0.13 mm).
 EDGE_GAP = 1.15
+HINGE_GAP = 0.5                      # between neighbouring thumb keys' facing corners, as between columns
 
 # Upstream centres and orientations of the outer and middle thumb keys.
 HALVES = {
@@ -32,8 +35,14 @@ HALVES = {
 }
 # Upstream centre of the old 1.5u inner key, which the split keys replace.
 OLD_INNER = {"left": (133.25, 123.32), "right": (166.0625, 123.32)}
-# Upstream centre of the bottom key of the inner index column, above the middle thumb key.
-INDEX_BOTTOM = {"left": (116.5, 99.93), "right": (182.8125, 99.93)}
+# x of the inner index column, whose bottom key sits above the middle thumb key.
+INDEX_X = {"left": 116.5, "right": 182.8125}
+
+
+def index_bottom(half):
+    """Centre of the inner index column's bottom key, on tools/stagger.py's stagger."""
+    import stagger                               # (stagger.py imports this module)
+    return (INDEX_X[half], stagger.MIDDLE_TOP + stagger.COLUMNS[116.5] + 2 * ROW_PITCH)
 
 
 def rot(x, y, deg):
@@ -53,39 +62,38 @@ def corner(c, deg, sx, sy):
     return (c[0] + dx, c[1] + dy)
 
 
-def arc(half):
-    """Upstream-placed arc: [(centre, orientation)] for the outer, middle, lower
-    inner and upper inner keys."""
-    h = HALVES[half]
-    (x0, y0, d0), (x1, y1, d1) = h["outer"], h["middle"]
-    step = d1 - d0
-    dx, dy = rot(x1 - x0, y1 - y0, step)          # the same turn applied to the same shift
-    lower, deg = (x1 + dx, y1 + dy), d1 + step
-    ux, uy = down(deg)
-    upper = (lower[0] - ROW_PITCH * ux, lower[1] - ROW_PITCH * uy)
-    return [((x0, y0), d0), ((x1, y1), d1), (lower, deg), (upper, deg)]
-
-
-def shift(half):
-    """Move from the upstream-placed arc to the index-aligned one."""
-    _, (c1, d1), (c2, d2), _ = arc(half)
-    side = 1 if half == "left" else -1            # +x is inward on the left half
-    # Middle -> inner: the middle key's bottom inner-side corner to the inner
-    # key's bottom outer-side corner, in the middle key's frame.
-    a, b = corner(c1, d1, side, 1), corner(c2, d2, -side, 1)
-    hinge = rot(b[0] - a[0], b[1] - a[1], -d1)
-    # Index -> middle is that pairing turned a quarter, from beside to below:
-    # the index key's bottom outer-side corner to the middle key's top one.
-    hx, hy = rot(*hinge, -90 * side)
-    ix, iy = corner(INDEX_BOTTOM[half], 0.0, -side, 1)
-    tx, ty = corner(c1, d1, -side, -1)
-    return (ix + hx - tx, iy + hy - ty)
-
-
 def keys(half):
-    """[(centre, orientation)] for the outer, middle, lower inner and upper inner keys."""
-    sx, sy = shift(half)
-    return [((c[0] + sx, c[1] + sy), d) for c, d in arc(half)]
+    """[(centre, orientation)] for the outer, middle, lower inner and upper inner
+    keys. Each step along the arc (bottom index key -> middle, outer -> middle,
+    middle -> inner) turns 15 degrees about a hinge where the two keys' facing
+    corners sit level, HINGE_GAP apart: the same gap as between ordinary keys."""
+    side = 1 if half == "left" else -1            # +x is inward on the left half
+    d0, d1 = HALVES[half]["outer"][2], HALVES[half]["middle"][2]
+    d2 = 2 * d1 - d0
+    g = HINGE_GAP
+    # Middle: its top outer corner g below the bottom index key's bottom outer corner.
+    ix, iy = corner(index_bottom(half), 0.0, -side, 1)
+    ox, oy = rot(-side * CAP_W / 2, -CAP_H / 2, d1)
+    c1 = (ix - ox, iy + g - oy)
+    # Inner: its bottom outer corner g along from the middle key's bottom inner one.
+    mx, my = corner(c1, d1, side, 1)
+    hx, hy = rot(side * g, 0, d1)
+    ox, oy = rot(-side * CAP_W / 2, CAP_H / 2, d2)
+    c2 = (mx + hx - ox, my + hy - oy)
+    # Outer: the middle key's bottom outer corner g along from its bottom inner one.
+    mx, my = corner(c1, d1, -side, 1)
+    c0 = (mx - side * g - side * CAP_W / 2, my - CAP_H / 2)
+    ux, uy = down(d2)
+    c3 = (c2[0] - ROW_PITCH * ux, c2[1] - ROW_PITCH * uy)
+    return [(c0, d0), (c1, d1), (c2, d2), (c3, d2)]
+
+
+def moves(half):
+    """How far the outer and middle keys move from upstream."""
+    (c0, _), (c1, _), _, _ = keys(half)
+    h = HALVES[half]
+    return {"outer": (c0[0] - h["outer"][0], c0[1] - h["outer"][1]),
+            "middle": (c1[0] - h["middle"][0], c1[1] - h["middle"][1])}
 
 
 def inner_keys(half):

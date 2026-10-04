@@ -1,5 +1,5 @@
 """JLCPCB assembly files: BOM and placement (CPL) for the SMD parts JLC solders
-(all on the back): key diodes, per-key and underglow LEDs, hot-swap sockets.
+(all on the back): key diodes and hot-swap sockets.
 Everything else (controllers, jacks, reset buttons, OLED headers, trackpoint)
 is hand-fitted.
 
@@ -12,13 +12,10 @@ from collections import defaultdict
 
 import pcbnew
 
-# LCSC part per footprint. The board's own LCSC fields where they're good;
-# the diodes have none, and the underglow LED's (C2761796) is nearly out of stock.
+# LCSC part per footprint (the diodes have no LCSC field on the board).
 PARTS = {
     "kbd:D3_SMD_v2": ("1N4148W", "SOD-123", "C81598"),
     "holykeebs:SW_choc_v1_HS_CPG135001S30_1u": ("Kailh CPG135001S30 choc hot-swap socket", "CPG135001S30", "C5333465"),
-    "PCM_marbastlib-various:LED_6028R": ("SK6812MINI-E", "SK6812MINI-E", "C5149201"),
-    "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm": ("WS2812B-B/W", "SMD5050-4P", "C114586"),
 }
 
 

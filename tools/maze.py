@@ -94,7 +94,11 @@ def build_masks(board, grid, net, half_w):
     others = {l: np.zeros((grid.h, grid.w), bool) for l in LAYERS}
     via_blocked = np.zeros((grid.h, grid.w), bool)
     target = {l: np.zeros((grid.h, grid.w), bool) for l in LAYERS}
-    items = [p for f in board.GetFootprints() for p in f.Pads()] + list(board.GetTracks())
+    # MAZE_IGNORE_TRACKS: plan through other nets' tracks (tools/ripup.py finds what's in the way).
+    tracks = list(board.GetTracks())
+    if os.environ.get("MAZE_IGNORE_TRACKS"):
+        tracks = [t for t in tracks if t.GetNetname() == net]
+    items = [p for f in board.GetFootprints() for p in f.Pads()] + tracks
     gx0, gy0 = grid.x0 - 3, grid.y0 - 3
     gx1, gy1 = grid.x0 + grid.w * CELL + 3, grid.y0 + grid.h * CELL + 3
     for it in items:
@@ -161,8 +165,10 @@ def build_masks(board, grid, net, half_w):
                     area = pcbnew.SHAPE_POLY_SET(z.Outline())
                     area.Inflate(MM(VIA_D / 2 + 0.1), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, MM(0.01))
                     grid.fill_poly(via_blocked, area)
+    # Same-net copper is free to run over, but not where a track of this width
+    # centred there would come too close to another net's copper.
     for l in LAYERS:
-        blocked[l] &= ~target[l]
+        blocked[l] &= ~(target[l] & ~others[l])
     via_blocked |= blocked[LAYERS[0]] | blocked[LAYERS[1]]
     return blocked, via_blocked, target, others
 
@@ -346,6 +352,20 @@ def main(src, dst, net, width, start_spec, goal_spec):
     runs[0][1][0] = (sx, sy)
     if not nearest and path[-1][1:] == (gr, gc):
         runs[-1][1][-1] = (gx, gy)
+    else:
+        # The grid says the end touches the net's copper; make sure KiCad agrees:
+        # an end outside that copper moves onto the nearest copper centre line.
+        layer = LAYERS[runs[-1][0]]
+        end = pcbnew.VECTOR2I(MM(runs[-1][1][-1][0]), MM(runs[-1][1][-1][1]))
+        mine = [it for it in [p for f in board.GetFootprints() for p in f.Pads()] + list(board.GetTracks())
+                if it.GetNetname() == net and it.IsOnLayer(layer)]
+        if mine and not any(it.GetEffectiveShape(layer).Collide(end, 0) for it in mine):
+            def anchor(it):
+                if it.GetClass() == "PCB_TRACK":
+                    return pcbnew.SEG(it.GetStart(), it.GetEnd()).NearestPoint(end)
+                return it.GetPosition()
+            best = min((anchor(it) for it in mine), key=lambda q: (q - end).EuclideanNorm())
+            runs[-1][1].append((pcbnew.ToMM(best.x), pcbnew.ToMM(best.y)))
     for i, (layer, pts) in enumerate(runs):
         for a, b in zip(pts, pts[1:]):
             if a == b:
