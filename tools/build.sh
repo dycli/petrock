@@ -6,7 +6,8 @@
 #   3. trim: only copper off the board or in a clash upstream didn't have goes
 #      (tools/trim.py), so cut wires keep their stubs;
 #   4. route: what is open, around the surviving stock copper, which the router
-#      may not rip up ($KEEP_IDS); then dead ends go and DRC is diffed with upstream's.
+#      may not rip up ($KEEP_IDS) unless a connection is boxed in by it; then dead
+#      ends go and DRC is diffed with upstream's.
 #   usage: build.sh [single|dual]
 #   single: SK8707-01 trackpoint at the right outer thumb key (pcb/, printout.pdf)
 #   dual:   trackpoints at both outer thumb keys (pcb/dual/, printout-dual.pdf)
@@ -33,7 +34,8 @@ drc $B/upstream.kicad_pcb $B/drc_up.json
 # 1. Place.
 export MOVED_OUT=$B/moved.txt NEW_EDGES=$B/new_edges.txt
 rm -f $MOVED_OUT $NEW_EDGES
-bin/kpy tools/stagger.py $B/upstream.kicad_pcb $B/s.kicad_pcb
+bin/kpy tools/pins.py $B/upstream.kicad_pcb $B/s.kicad_pcb
+bin/kpy tools/stagger.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/widen.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/outline.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/inner_strip.py $B/s.kicad_pcb $B/s.kicad_pcb
@@ -65,15 +67,25 @@ links() {
 }
 links TP1 TP2 ""
 dual && links TP3 TP4 _L
-for pass in 1 2 3 4 5 6; do
+connect() {
   bin/kpy tools/autoconnect.py $B/out.kicad_pcb
   # Strip every dead end DRC finds (each removal can expose the next).
   for strip in 1 2 3 4 5 6 7 8 9 10; do
     drc $B/out.kicad_pcb $B/drc.json
     [ "$(bin/kpy tools/drop_dangling.py $B/out.kicad_pcb $B/drc.json | tail -1)" = 0 ] && break
   done
+  return 0
+}
+for pass in 1 2 3 4; do
+  connect
   [ "$(open_count $B/drc.json)" = 0 ] && break
 done
+# Last resort for a connection boxed in by stock copper: stock may be ripped up too.
+if [ "$(open_count $B/drc.json)" != 0 ]; then
+  unset KEEP_IDS
+  connect
+  connect
+fi
 bin/kpy tools/solid_starved.py $B/out.kicad_pcb $B/drc.json
 bin/kcli pcb drc --refill-zones --save-board -o $B/drc.rpt $B/out.kicad_pcb >/dev/null 2>&1 || true
 drc $B/out.kicad_pcb $B/drc.json

@@ -4,7 +4,7 @@ Removes the key and its diode. The sensor sits flat on the front
 over the key's place, the board centred on the key (its stem STEM_DROP below
 the key's centre), and comes up through the plate's opening. The driver sits
 flat on the back beneath it, turned across so it is narrower than a key, its
-host pins facing the controller. Its PS/2 lines go to that half's controller pins 11/12 (GP8/GP9), its
+host pins facing the controller. Its PS/2 lines go to that half's controller pins 1/2 (clock/data), its
 power to the OLED header's 3.3 V pin. Both halves use the same placement: the
 outline round the outer thumb is mirrored, and the parts are symmetric enough.
 
@@ -92,7 +92,8 @@ def place(board, h):
     sfx = h["suffix"]
     # 4 (reset: the driver resets itself) and 6-8 (buttons) unused.
     driver_nets = {"1": h["ground"], "2": "TP_DATA" + sfx, "3": "TP_CLK" + sfx, "5": h["power"]}
-    controller_nets = {"11": "TP_DATA" + sfx, "12": "TP_CLK" + sfx}       # pins 11/12 = GP8/GP9
+    # Pins 1/2: a nice!nano's high-frequency D1/D0 (tools/pins.py frees them); GP0/GP1 on an RP2040.
+    controller_nets = {"1": "TP_CLK" + sfx, "2": "TP_DATA" + sfx}
     link_nets = {f"S{i}": f"TP_S{i}{sfx}" for i in range(1, 5)}
 
     p = one(h["key"]).GetPosition()

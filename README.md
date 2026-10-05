@@ -29,9 +29,12 @@ the board or in a new clash is cut, and only what is then open is routed
   inner-index key (`tools/thumbs.py`). The 1.5u inner key becomes two 1u keys;
   the new upper one takes the thumb row's last free column (col 0).
 - **Trackpoint.** Sprintek SK8707-01-004 at the outer thumb key: sensor on the
-  front, nub centred on where the key was, driver on the back, PS/2 on
-  controller pins 11/12 (GP8/GP9), 3.3 V from the OLED header
+  front, nub centred on where the key was, driver on the back, PS/2 clock and
+  data on controller pins 1/2, 3.3 V from the OLED header
   (`tools/outer_thumb.py`, footprints from `tools/make_footprints.py`).
+- **Pins for wireless.** Pins 1/2 are a nice!nano's high-frequency D1/D0, which
+  the ZMK PS/2 driver recommends (lower-frequency pins can disturb Bluetooth);
+  the TRRS data line moves from pin 2 to pin 11 to free them (`tools/pins.py`).
 - **Outline.** Drawn from the keys (`tools/outline.py`): a flat top 1.15 mm
   above the middle column, 7.5-degree slopes to either side, a straight outer
   side, one 7.5-degree bottom edge, and the inner side widened for the upper
@@ -75,9 +78,15 @@ Outputs: `pcb/petrock-41*.kicad_pcb` and `pcb/bottom.kicad_pcb`;
 - Matrix (each half, right with `_r` nets): pinky fourth key row 3 col 1; ring
   fourth key row 3 col 2; upper inner thumb row 3 col 0; rows 0-2 of col 0
   are empty. The trackpoint replaces the outer thumb key (row 3 col 3).
-- PS/2: `PS2_DATA_PIN GP8`, `PS2_CLOCK_PIN GP9`; the sensor's pad edge faces
-  the controller (if the axes come out turned, `PS2_MOUSE_ROTATE` fixes it).
-- No RGB.
+- Wired (QMK, RP2040 Pro Micro): split serial on pin 11 (`SOFT_SERIAL_PIN GP8`,
+  PIO driver); PS/2 `PS2_CLOCK_PIN GP0`, `PS2_DATA_PIN GP1` (PIO driver).
+- Wireless (ZMK, nice!nano): PS/2 clock D1 (P0.06), data D0 (P0.08), e.g. with
+  infused-kim's PS/2 mouse driver; the trackpoint's driver board resets itself,
+  so no reset pin. It draws power from the controller's VCC pin, which ZMK's
+  external-power control switches off in sleep. The battery solders to the
+  nice!nano's B+/B- pads (no switch on the board). The jack isn't used.
+- The sensor's pad edge faces the controller (if the axes come out turned,
+  rotate them in firmware). No RGB.
 
 ## Open items
 
