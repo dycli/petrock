@@ -15,7 +15,7 @@ export_board() {  # name board
   bin/kcli pcb export gerbers --no-x2 --subtract-soldermask \
     --layers F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts \
     -o "$d/" "$2" >/dev/null
-  bin/kcli pcb export drill --format excellon --drill-origin absolute --excellon-units mm \
+  bin/kcli pcb export drill --format excellon --drill-origin absolute --excellon-units mm --excellon-separate-th \
     --generate-map --map-format gerberx2 -o "$d/" "$2" >/dev/null
   (cd "$d" && zip -q -r - .) > "$F/$1.zip"
   rm -rf "$d"
