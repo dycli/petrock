@@ -46,11 +46,10 @@ the board or in a new clash is cut, and only what is then open is routed
   top corner is 1.15 mm inside the inner slope, like the keycaps. The USB-C and
   the jack's barrel overhang. The reset button sits under the jack
   (`tools/inner_strip.py`).
-- The holykeebs and Corne logos and holykeebs' revision stamp are removed; the
-  back carries the board's name, version and repository between each
-  controller's pin rows (`tools/stamp.py`); a release (`tools/release.sh vX.Y`) builds,
-  stamps, commits and tags in one go, so the boards in tag vX.Y say vX.Y;
-  other builds stamp git's description, which marks them unreleased; the board and the switch plates
+- The holykeebs and Corne logos and holykeebs' revision stamp are removed; the back
+  carries the short hash of the commit the board was built from, between each
+  controller's pin rows (`tools/stamp.py`; the build won't stamp uncommitted
+  scripts); the board and the switch plates
   carry the Petrock logo with a 7 mm dot in its notch (`tools/logo.py`), and the
   jack, reset button and OLED header have no printed outlines
   (`tools/quiet_silk.py`).
