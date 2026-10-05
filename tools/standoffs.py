@@ -14,16 +14,56 @@ import sys
 import pcbnew
 
 import logo
+import parts
 import stagger
+import thumbs
 import widen
 
 MM = pcbnew.FromMM
-TARGET = (65.5, 126.0)      # left half, upstream frame: under the ring column's fourth key
-TOP_TARGET = (53.5, 73.0)   # where the pinky and ring columns meet, between their top two rows
+# Left half, upstream frame. Where the pinky and ring columns meet: between their
+# top two rows and between their bottom two rows, as stock's two between its
+# pinky columns. And the one by the trackpoint, low, below the line from the
+# thumb standoff to the bottom outer one (not in line with them).
+# Each one between four keys sits at their centre: halfway between the two
+# columns, and halfway between the two columns' row gaps (they're staggered).
+def centre(x0, x1, row):
+    gap = lambda x: stagger.MIDDLE_TOP + stagger.COLUMNS[x] + (row + 0.5) * thumbs.ROW_PITCH
+    return ((x0 + x1) / 2, (gap(x0) + gap(x1)) / 2)
+
+
+TOP_TARGET = centre(stagger.INNER_PINKY_X, stagger.RING_X, 0)        # pinky | ring, rows 1-2
+TARGET = centre(stagger.INNER_PINKY_X, stagger.RING_X, 2)            # pinky | ring, rows 3-4
+INDEX_TARGET = centre(98.5, stagger.INNER_INDEX_X, 0)                 # index | inner index, rows 1-2
+def notch_target():
+    """The one by the trackpoint: in the logo's open 90-degree notch (between its
+    two lower arms), at the centre of the rectangle the notch makes when mirrored
+    about its two arm tips: midway between the tips."""
+    pts = logo.placed()
+    turn = lambda i: math.degrees(math.atan2(
+        (pts[i - 1][0] - pts[i][0]) * (pts[(i + 1) % len(pts)][1] - pts[i][1]) - (pts[i - 1][1] - pts[i][1]) * (pts[(i + 1) % len(pts)][0] - pts[i][0]),
+        (pts[i - 1][0] - pts[i][0]) * (pts[(i + 1) % len(pts)][0] - pts[i][0]) + (pts[i - 1][1] - pts[i][1]) * (pts[(i + 1) % len(pts)][1] - pts[i][1])))
+    i = max((i for i in range(len(pts)) if abs(turn(i) - 90) < 1), key=lambda i: pts[i][1])   # the lower notch
+    a, b = pts[i - 1], pts[(i + 1) % len(pts)]
+    return ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+
+
+def thumb_target():
+    """The thumb one: equally far from the three keycap corners round it (the inner
+    index column's bottom key, the middle thumb key, the upper inner thumb key)."""
+    near = (125.73, 113.73)                    # stock's, among those corners
+    index = ((stagger.INNER_INDEX_X, stagger.MIDDLE_TOP + stagger.COLUMNS[stagger.INNER_INDEX_X] + 2 * thumbs.ROW_PITCH), 0.0)
+    keys = thumbs.keys("left")
+    a, b, c = (min((thumbs.corner(k, deg, sx, sy) for sx in (-1, 1) for sy in (-1, 1)),
+                   key=lambda p: math.hypot(p[0] - near[0], p[1] - near[1]))
+               for k, deg in (index, keys[1], keys[3]))
+    d = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]))
+    sq = lambda p: p[0] ** 2 + p[1] ** 2
+    return ((sq(a) * (b[1] - c[1]) + sq(b) * (c[1] - a[1]) + sq(c) * (a[1] - b[1])) / d,
+            (sq(a) * (c[0] - b[0]) + sq(b) * (a[0] - c[0]) + sq(c) * (b[0] - a[0])) / d)
 GAP = 0.5                   # its pad to any other pad
 EDGE = 3.0                  # its centre inside the board edge
 REACH, STEP = 12.0, 0.25
-LOGO_CLEAR = 0.5            # its pad to the logo
+LOGO_CLEAR = 1.5            # its pad to the logo (its screw head then clears it by about 1.25)
 
 
 def body(f):
@@ -61,9 +101,47 @@ def off_logo(f, mark):
     return not any(m.Collide(c, r) for m in mark)
 
 
+def blockers(board, f):
+    """Footprints whose pads or courtyard keep f's spot from being clear."""
+    (pad,) = list(f.Pads())
+    hole = pad.GetEffectiveShape(pcbnew.B_Cu)
+    out = []
+    for o in board.GetFootprints():
+        if o.m_Uuid == f.m_Uuid:
+            continue
+        hit = any((p.IsOnLayer(layer) or p.GetDrillSizeX() > 0) and p.GetEffectiveShape(layer).Collide(hole, MM(GAP))
+                  for p in o.Pads() for layer in (pcbnew.F_Cu, pcbnew.B_Cu))
+        if hit or (o.IsFlipped() and body(o).Collide(pad.GetPosition(), pad.GetBoundingBox().GetWidth() // 2)):
+            out.append(o)
+    return out
+
+
+def nudge_diodes(board, f):
+    """If only key diodes block f's spot, slide each straight away from f (its
+    copper dragged along) until it clears. Returns whether f's spot is clear."""
+    for _ in range(40):
+        hits = blockers(board, f)
+        if not hits:
+            return True
+        if any(not o.GetReference().startswith("D") for o in hits):
+            return False
+        for o in hits:
+            print(f"  nudging {o.GetReference()} clear of the standoff")
+            c, d = f.GetPosition(), o.GetPosition()
+            v = (pcbnew.ToMM(d.x - c.x), pcbnew.ToMM(d.y - c.y))
+            n = math.hypot(*v) or 1.0
+            parts.drag(board, [o], parts.shift(0.05 * v[0] / n, 0.05 * v[1] / n))
+    return False
+
+
 def move(board, pair, target, outline, mark):
     left, right = pair
     mirror = lambda v: widen.MIRROR_X - v + widen.RIGHT_DX
+    # The exact spot first, making room by nudging key diodes if that's all it takes.
+    left.SetPosition(pcbnew.VECTOR2I(MM(target[0]), MM(target[1])))
+    right.SetPosition(pcbnew.VECTOR2I(MM(mirror(target[0])), MM(target[1])))
+    if all(outline.Contains(f.GetPosition()) and off_logo(f, mark) and nudge_diodes(board, f) for f in (left, right)):
+        return target
     n = int(REACH / STEP)
     for _, i, j in sorted((math.hypot(i, j), i, j) for i in range(-n, n + 1) for j in range(-n, n + 1) if math.hypot(i, j) * STEP <= REACH):
         px, py = target[0] + i * STEP, target[1] + j * STEP
@@ -91,18 +169,19 @@ def main(src, dst):
     y = lambda f: pcbnew.ToMM(f.GetPosition().y)
     mirror = lambda v: widen.MIRROR_X - v + widen.RIGHT_DX
     twin = lambda f: min(spacers, key=lambda o: math.hypot(x(o) - mirror(x(f)), y(o) - y(f)))
-    # The two standoffs that sat between the pinky columns: the lower one under the
-    # ring column's fourth key, the upper one up in the outer top corner.
+    # The two standoffs that sat between the pinky columns go where the pinky and
+    # ring columns meet, top and bottom; the one stock had below the ring column
+    # goes low by the trackpoint.
     upper, lower = sorted(sorted(spacers, key=x)[:2], key=y)
-    for f, target, name in ((lower, TARGET, "pinky-end"), (upper, TOP_TARGET, "outer-top")):
+    left = [f for f in spacers if x(f) < widen.SPLIT_X]
+    mid = min(left, key=lambda f: math.hypot(x(f) - 76.41, y(f) - 109.18))   # stock's bottom middle one
+    index = min(left, key=lambda f: math.hypot(x(f) - 107.25, y(f) - 72.05))   # stock's, between index and inner index
+    thumb = min(left, key=lambda f: math.hypot(x(f) - 125.73, y(f) - 113.73))  # stock's, by the thumbs
+    for f, target, name in ((upper, TOP_TARGET, "outer top"), (lower, TARGET, "outer bottom"),
+                            (index, INDEX_TARGET, "index top"), (thumb, thumb_target(), "thumb"),
+                            (mid, notch_target(), "by the trackpoint")):
         px, py = move(board, (f, twin(f)), target, outline, mark)
         print(f"{name} standoff: {px:.2f}, {py:.2f}")
-    moved = {upper.m_Uuid.AsString(), lower.m_Uuid.AsString()}
-    for f in [f for f in spacers if x(f) < widen.SPLIT_X and f.m_Uuid.AsString() not in moved]:
-        if not off_logo(f, mark):
-            was = (x(f), y(f))
-            px, py = move(board, (f, twin(f)), was, outline, mark)
-            print(f"standoff under the logo: {was[0]:.2f}, {was[1]:.2f} -> {px:.2f}, {py:.2f}")
     board.Save(dst)
 
 

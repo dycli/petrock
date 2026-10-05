@@ -50,8 +50,12 @@ the board or in a new clash is cut, and only what is then open is routed
   board and the switch plates carry the Petrock logo (`tools/logo.py`), and the
   jack, reset button and OLED header have no printed outlines
   (`tools/quiet_silk.py`).
-- Five standoffs per half, as stock: the one the outer pinky column lost moves
-  to where the pinky and ring columns meet (`tools/standoffs.py`).
+- Five standoffs per half, as stock, placed by geometry (`tools/standoffs.py`):
+  three where four keys meet, each at the four keys' centre (pinky and ring
+  columns between their top two and bottom two rows, index and inner index
+  between their top two); one at the thumbs, equally far from its three keycap
+  corners; and one in the logo's notch, at the centre of the key cell the notch
+  outlines. A key diode may move a fraction to make room, if it stays clear.
 - Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40)
   has an opening for the trackpoint sensor; a new FR4 bottom plate fits the
   outline.
