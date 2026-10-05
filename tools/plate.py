@@ -18,13 +18,17 @@ import sys
 import pcbnew
 
 import outline
+import stagger
 import thumbs
 import widen
 
 MM = pcbnew.FromMM
 PLATE_DX = -4.0
 SENSOR_MARGIN = 0.3      # plate opening round the trackpoint sensor board (it is soldered in place)
-INNER_X = 167.81         # plate frame: the stock plate's straight inner edge
+# Plate frame: the inner index column's keycap edge on the right half, where the
+# opening by the controller starts (tools/inner_strip.py spaces the controller off
+# the same line), so the plate clears the controller's socket strips.
+INNER_X = widen.MIRROR_X - stagger.INNER_INDEX_X - thumbs.CAP_W / 2 + PLATE_DX
 PLATE_THICKNESS = 1.2    # mm: order the switch plates at this thickness
 OLED_CLEAR = 1.0         # plate edge to the OLED header's pads
 DX = -widen.RIGHT_DX + PLATE_DX
@@ -45,7 +49,7 @@ def polygon(points):
 def keep(oled):
     """Where the plate may be: everything but the strip by the controller. Its edge
     runs straight across from the board's inner edge to the inner index column's
-    edge (INNER_X), then up it. The level is where a line from the board's inner
+    keycap edge (INNER_X), then up it. The level is where a line from the board's inner
     corner above the inner thumb keys, parallel to the upper inner thumb key's top,
     comes OLED_CLEAR from the OLED header's pads (oled, plate frame) or level with
     that key's outer top corner, whichever is first: under the OLED header, and

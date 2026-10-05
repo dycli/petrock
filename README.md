@@ -47,7 +47,11 @@ the board or in a new clash is cut, and only what is then open is routed
   the jack's barrel overhang. The reset button sits under the jack
   (`tools/inner_strip.py`).
 - The holykeebs and Corne logos and the OLED-cover holes are removed; the
-  switch plates carry the thumb-cluster logo (`tools/logo.py`).
+  board and the switch plates carry the Petrock logo (`tools/logo.py`), and the
+  jack, reset button and OLED header have no printed outlines
+  (`tools/quiet_silk.py`).
+- Five standoffs per half, as stock: the one the outer pinky column lost moves
+  to where the pinky and ring columns meet (`tools/standoffs.py`).
 - Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40)
   has an opening for the trackpoint sensor; a new FR4 bottom plate fits the
   outline.
@@ -69,8 +73,10 @@ the board or in a new clash is cut, and only what is then open is routed
    (`tools/reuse.py`).
 
 Then `tools/plates.sh` makes the plates (order the switch plates at 1.2 mm,
-which choc switches clip into; the main board and bottom plate at 1.6 mm) and
-the 1:1 printout (print it with
+which choc switches clip into; the main board and bottom plate at 1.6 mm; the
+main board in ENIG, for flat gold pads under the trackpoint driver's
+castellations; the plates have no exposed copper, so the cheapest finish)
+and the 1:1 printout (print it with
 scaling off, e.g. `lp -o print-scaling=none`). `tools/fab.sh [single|dual]`
 writes Gerber and drill zips and JLC's assembly BOM and placement (diodes and
 hot-swap sockets) to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.

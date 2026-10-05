@@ -14,7 +14,7 @@ import pcbnew
 from demo_board import model
 
 PLATE_TOP = 2.2          # choc: plate top above the PCB
-THICKNESS = 1.6          # plate stackup
+THICKNESS = 1.2          # plate stackup (tools/plate.py)
 TO_RIGHT = 12.4 + 4.0    # plate frame -> PCB right half (RIGHT_DX - PLATE_DX)
 MIRROR = 299.31 - 4.0    # mirrored plate frame -> PCB left half (tools/widen.py MIRROR_X)
 

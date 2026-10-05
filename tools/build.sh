@@ -88,6 +88,9 @@ for pass in 1 2 3 4; do
   connect
 done
 bin/kpy tools/solid_starved.py $B/out.kicad_pcb $B/drc.json
+bin/kpy tools/logo.py $B/out.kicad_pcb pcb             # the logo on the top silkscreen
+bin/kpy tools/quiet_silk.py $B/out.kicad_pcb            # no outlines round the jack, reset and OLED header
+sed -i 's/(copper_finish "[^"]*")/(copper_finish "ENIG")/' $B/out.kicad_pcb   # as ordered (README)
 bin/kcli pcb drc --refill-zones --save-board -o $B/drc.rpt $B/out.kicad_pcb >/dev/null 2>&1 || true
 drc $B/out.kicad_pcb $B/drc.json
 python3 tools/drcdiff.py $B/drc_up.json $B/drc.json

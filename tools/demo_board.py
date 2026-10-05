@@ -54,6 +54,8 @@ def main(src, dst, marbast, kbd, pkg3d, standin, klp, *opts):
         f.Models().clear()
         if "nooled" in opts and f.GetReference() in ("J2", "J4"):
             continue
+        if "wireless" in opts and f.GetReference() in ("J1", "J3", "RSW1", "RSW2"):   # no jack or reset button
+            continue
         for m in models:
             for a, b in subst.items():
                 if m.m_Filename.startswith(a):

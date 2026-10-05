@@ -1,4 +1,4 @@
-"""The Arc logo, on the switch plate's silkscreen and the PCB's: an upright R
+"""The Petrock logo, on the switch plate's silkscreen and the PCB's: an upright R
 tucked into the corner under the middle column's bottom key, beside the ring
 column, reaching toward the trackpoint.
 

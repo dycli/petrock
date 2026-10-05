@@ -9,8 +9,8 @@ Then the pinky becomes one column of four: the inner pinky column moves up
 copper along; the outer pinky column's top key becomes its fourth key and the
 outer bottom key becomes a fourth key under the ring column. Each of those two
 joins the column it lands in, on the thumb row (row3), which has those columns
-free; the outer home key goes. So does the upper of the two standoffs between
-the pinky columns. The moved references go to $MOVED_OUT.
+free; the outer home key goes. (The two standoffs between the pinky columns move
+later: tools/standoffs.py.) The moved references go to $MOVED_OUT.
 
 usage: stagger.py IN OUT
 """
@@ -33,7 +33,6 @@ PINKY_X = 54.0              # left half, upstream frame: the pinky columns lie o
 INNER_PINKY_X = 44.5
 INNER_INDEX_X = 116.5       # the inner index column, beside the controller
 RING_X = 62.5
-PINKY_STANDOFF_Y = 90.0     # upstream: the lower pinky standoff is below this, the upper above
 # Left half, upstream frame: column x and its top key's drop below the middle
 # column (the inner pinky column's before the drop).
 COLUMNS = {44.5: PINKY, 62.5: STEP, 80.5: 0.0, 98.5: STEP, 116.5: 2 * STEP}
@@ -111,11 +110,6 @@ def main(src, dst):
             set_net(board, k, "1", col + sfx)
             set_net(board, diode, "1", "row3" + sfx)
         doomed += parts.remove_key(board, by_ref[home])
-    # Of the two standoffs between the pinky columns, the upper one goes; the lower
-    # one moves later (tools/standoffs.py).
-    doomed += [f for f in fps if f.GetFPIDAsString() == "holykeebs:M2_SPACER"
-               and not PINKY_X <= pcbnew.ToMM(f.GetPosition().x) <= MIRROR_X - PINKY_X
-               and pcbnew.ToMM(f.GetPosition().y) < PINKY_STANDOFF_Y]
     for item in doomed:           # last: removing leaves other handles stale
         board.Remove(item)
     if os.environ.get("MOVED_OUT"):
