@@ -9,9 +9,16 @@ The detached driver is the integrated module's 23 x 14.5 mm control board; its
 outline, the four sensor-link castellations (2.5 mm pitch, same x as the
 sensor's pads, pin 1 at the left) and the corner pads were checked against
 holykeebs' top-view photo (ref/sk8707-01-004-top.png, about +-0.25 mm). The
-host pins follow the drawing (1.80 mm pitch from 3.08 mm in). For hand
-soldering, every pad leaves at least 0.9 mm to the next: the host pads are
-0.9 mm wide, the sensor-link pads 1.6 mm (2.5 mm pitch).
+host pins are uncertain, so their pads fit both sources: the drawing (1.80
+mm pitch, pin 1's pad edge 3.08 mm in, so its centre 3.58) and two top-view
+photos of the real Rev A board (holykeebs', scaled by the 2.5 mm sensor-link
+pitch, which they match to 0.01 mm: 1.72 mm pitch, pin 1 at 3.76). Both put
+the row's middle about 9.8 mm in; pads at HOST_PITCH about HOST_MID land
+within 0.21 mm of either. For hand soldering, every pad leaves at least
+0.9 mm to the next: the host pads are HOST_PAD wide, the sensor-link pads
+1.6 mm (2.5 mm pitch). The sensor's four narrow castellations come in pairs,
+each pair one link pad (as on the integrated module's driver), so S3 and S4
+each cover a pair.
 """
 import pathlib
 
@@ -38,6 +45,7 @@ def footprint(name, descr, body):
             f'\t(layer "F.Cu")\n\t(descr "{descr}")\n\t(attr smd)\n{body})\n')
 
 
+HOST_PITCH, HOST_MID, HOST_PAD = 1.758, 9.823, 0.85   # see above
 SENSOR_PADS = [(-3.75, 1.6), (-1.25, 1.6), (1.25, 1.6), (3.75, 1.6)]  # x, width
 
 
@@ -66,7 +74,7 @@ def driver():
     b += rect("F.CrtYd", -w / 2 - 0.25, top - 1.25, w / 2 + 0.25, bot + 1.05, 0.05)
     b += rect("F.SilkS", -w / 2 + 0.6, top + 2.1, w / 2 - 0.6, bot - 1.4, 0.12)
     for i in range(8):                              # host castellations, pin 1 = GND
-        b += smd(str(i + 1), -w / 2 + 3.08 + 1.8 * i, bot - 0.1, 0.9, 1.8)
+        b += smd(str(i + 1), -w / 2 + HOST_MID + HOST_PITCH * (i - 3.5), bot - 0.1, HOST_PAD, 1.8)
     for i, (x, pw) in enumerate(SENSOR_PADS, 1):    # sensor link, same x as the sensor's pads
         b += smd(f"S{i}", x, top + 0.25, pw, 2.5)
     for x in (-6.5, 6.5):

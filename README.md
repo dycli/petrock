@@ -92,10 +92,12 @@ Outputs: `pcb/petrock-41*.kicad_pcb` and `pcb/bottom.kicad_pcb`;
 
 ## Open items
 
-- **Driver footprint:** Sprintek doesn't draw the detached driver on its own;
-  it comes from the integrated-module drawing, checked against holykeebs'
-  top-view photo (`ref/`, not committed): 23 x 14.5 mm, host pins at 1.80 mm
-  pitch with 1.0 mm pads for hand soldering.
+- **Driver footprint:** Sprintek doesn't draw the detached driver on its own.
+  Its outline and sensor-link pads follow the integrated-module drawing. Its
+  host pins disagree between the drawing (1.80 mm pitch) and holykeebs'
+  product photos (1.72 mm), so their pads fit both: 1.758 mm pitch about the
+  row's shared middle, every pin within 0.21 mm of its pad's centre either
+  way. Check a real driver against the footprint before ordering boards.
 - **Under-board height:** check that the driver (about 2 mm) clears the
   bottom plate.
 - **Standoff length** for the plate/PCB/bottom sandwich (M2 3 mm both sides
