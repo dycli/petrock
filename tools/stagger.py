@@ -83,6 +83,11 @@ def main(src, dst):
             y0 = pcbnew.ToMM(column[0].GetPosition().y) - thumbs.ROW_PITCH / 2
             parts.drag(board, group, parts.shift(0, dy), inside=lambda p: x0 < p[0] < x1 and p[1] > y0)
             moved += [part.GetReference() for part in group]
+            # Then each key exactly on its row (stock's are off by up to 0.02 mm).
+            for r, k in enumerate(column[:ROWS]):
+                fix = want[(col, r)] - pcbnew.ToMM(k.GetPosition().y)
+                if abs(fix) > 1e-6:
+                    parts.drag(board, [k, *parts.key_parts(board, k)], parts.shift(0, fix))
             continue
         for r, k in enumerate(column[:ROWS]):
             if pcbnew.ToMM(k.GetPosition().y) > 106:      # not a thumb key
