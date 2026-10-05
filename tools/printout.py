@@ -44,7 +44,7 @@ def half_svg(pts, parts, ox, oy):
             out.append(f'<rect x="{cx - CAP_W / 2:.3f}" y="{cy - CAP_H / 2:.3f}" width="{CAP_W}" height="{CAP_H}" '
                        f'rx="{CAP_R}" fill="white" stroke="#333" stroke-width="0.35" '
                        f'transform="rotate({-deg:.2f} {cx:.3f} {cy:.3f})"/>')
-        elif ref == "TP1":
+        elif ref == "A1":
             cx, cy = T((x, y))
             out.append(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{NUB_D / 2}" fill="#d22" stroke="black" stroke-width="0.3"/>')
             out.append(f'<text x="{cx:.2f}" y="{cy + NUB_D / 2 + 4:.2f}" font-size="3" text-anchor="middle">trackpoint</text>')

@@ -66,8 +66,8 @@ links() {
     route TP_S${pad#S}$3 0.25 $2:$pad "$x,$y,B" || true
   done <<<"$vias"
 }
-links TP1 TP2 ""
-dual && links TP3 TP4 _L
+links A1 A2 ""
+dual && links A3 A4 _L
 connect() {
   bin/kpy tools/autoconnect.py $B/out.kicad_pcb
   # Strip every dead end DRC finds (each removal can expose the next).
@@ -90,6 +90,7 @@ done
 bin/kpy tools/solid_starved.py $B/out.kicad_pcb $B/drc.json
 bin/kpy tools/logo.py $B/out.kicad_pcb pcb             # the logo on the top silkscreen
 bin/kpy tools/quiet_silk.py $B/out.kicad_pcb            # no outlines round the jack, reset and OLED header
+bin/kpy tools/stamp.py $B/out.kicad_pcb "$NAME" "${PETROCK_VERSION:?set PETROCK_VERSION, the tag this build will carry}"
 sed -i 's/(copper_finish "[^"]*")/(copper_finish "ENIG")/' $B/out.kicad_pcb   # as ordered (README)
 bin/kcli pcb drc --refill-zones --save-board -o $B/drc.rpt $B/out.kicad_pcb >/dev/null 2>&1 || true
 drc $B/out.kicad_pcb $B/drc.json

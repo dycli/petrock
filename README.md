@@ -30,8 +30,8 @@ the board or in a new clash is cut, and only what is then open is routed
   the new upper one takes the thumb row's last free column (col 0).
 - **Trackpoint.** Sprintek SK8707-01-004 at the outer thumb key: sensor on the
   front, nub centred on where the key was, driver on the back, PS/2 clock and
-  data on controller pins 1/2, 3.3 V from the OLED header
-  (`tools/outer_thumb.py`, footprints from `tools/make_footprints.py`).
+  data on controller pins 1/2, 3.3 V from the OLED header; sensor A1/A3, controller
+  board A2/A4 (`tools/outer_thumb.py`, footprints from `tools/make_footprints.py`).
 - **Pins for wireless.** Pins 1/2 are a nice!nano's high-frequency D1/D0, which
   the ZMK PS/2 driver recommends (lower-frequency pins can disturb Bluetooth);
   the TRRS data line moves from pin 2 to pin 11 to free them (`tools/pins.py`).
@@ -46,7 +46,10 @@ the board or in a new clash is cut, and only what is then open is routed
   top corner is 1.15 mm inside the inner slope, like the keycaps. The USB-C and
   the jack's barrel overhang. The reset button sits under the jack
   (`tools/inner_strip.py`).
-- The holykeebs and Corne logos are removed; the board and the switch plates
+- The holykeebs and Corne logos and holykeebs' revision stamp are removed; the
+  back carries the board's name, version and repository between each
+  controller's pin rows (`tools/stamp.py`; build with PETROCK_VERSION set to the
+  tag it will carry); the board and the switch plates
   carry the Petrock logo with a 7 mm dot in its notch (`tools/logo.py`), and the
   jack, reset button and OLED header have no printed outlines
   (`tools/quiet_silk.py`).

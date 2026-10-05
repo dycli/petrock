@@ -33,9 +33,9 @@ DRIVER_OFFSET = (0.0, -0.25)
 
 HALVES = {
     # key and its diode; controller; sensor and driver refs; ground and 3.3 V nets; net suffix
-    "right": dict(key="SW40", diode="D40", controller="U2", sensor="TP1", driver="TP2",
+    "right": dict(key="SW40", diode="D40", controller="U2", sensor="A1", driver="A2",
                   ground="GNDA", power="VDD", suffix=""),
-    "left": dict(key="SW19", diode="D19", controller="U1", sensor="TP3", driver="TP4",
+    "left": dict(key="SW19", diode="D19", controller="U1", sensor="A3", driver="A4",
                  ground="GND", power="VCC", suffix="_L"),
 }
 

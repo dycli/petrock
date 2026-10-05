@@ -28,7 +28,7 @@ def outline_and_keys(path, shift_right):
             x += RIGHT_DX
         if "SW_choc" in f.GetFPIDAsString():
             keys.append((x, y, f.GetOrientationDegrees()))
-        elif f.GetReference() == "TP1":
+        elif f.GetReference() == "A1":
             nub = (x, y)
     return polys, keys, nub
 

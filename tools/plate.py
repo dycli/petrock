@@ -98,7 +98,7 @@ def pcb_parts(path):
             for pad in f.Pads():
                 bb = pad.GetBoundingBox()
                 oled.append(tuple(pcbnew.ToMM(v) for v in (bb.GetLeft(), bb.GetTop(), bb.GetRight(), bb.GetBottom())))
-        if f.GetReference() == "TP1":
+        if f.GetReference() == "A1":
             (body,) = [g.GetBoundingBox() for g in f.GraphicalItems()
                        if g.GetLayer() == pcbnew.F_Fab and g.GetClass() == "PCB_SHAPE" and g.GetShapeStr() == "Rect"]
             x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (body.GetLeft(), body.GetTop(), body.GetRight(), body.GetBottom()))
