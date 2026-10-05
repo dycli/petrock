@@ -31,6 +31,7 @@ UPSTREAM_PINKY = 8.92       # pinky columns' top keys below the middle column's,
 PINKY = 2 * STEP            # here
 PINKY_X = 54.0              # left half, upstream frame: the pinky columns lie outside this
 INNER_PINKY_X = 44.5
+INNER_INDEX_X = 116.5       # the inner index column, beside the controller
 RING_X = 62.5
 PINKY_STANDOFF_Y = 90.0     # upstream: the lower pinky standoff is below this, the upper above
 # Left half, upstream frame: column x and its top key's drop below the middle

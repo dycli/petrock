@@ -23,7 +23,7 @@ def main(path, report):
     for v in json.load(open(report))["violations"]:
         if v["type"] == "track_dangling":
             for i in v["items"]:
-                m = re.match(r"Track \[(.*)\] on (\S+), length ([\d.]+) mm", i["description"])
+                m = re.match(r"Track \[(.*)\] on (\S+), length ([\d.eE+-]+) mm", i["description"])
                 if m:
                     flagged.append((m.group(1), m.group(2), float(m.group(3)),
                                     pcbnew.VECTOR2I(pcbnew.FromMM(i["pos"]["x"]), pcbnew.FromMM(i["pos"]["y"]))))

@@ -40,9 +40,12 @@ the board or in a new clash is cut, and only what is then open is routed
   side, one 7.5-degree bottom edge, and the inner side widened for the upper
   thumb key (`tools/widen.py`). Keycaps sit 1.15 mm from the edge wherever it
   follows them.
-- **Controller corner.** The controller and OLED header drop 3.35 mm under the
-  inner slope; the TRRS jack faces the top edge beside them, with the reset
-  button below it (`tools/inner_strip.py`).
+- **Controller corner.** Across the strip between the inner index keycaps
+  and the inner edge, the controller (a nice!nano's 17.78 mm board) and the
+  jack's 6 mm body sit with three even 1.63 mm gaps; each drops until its square
+  top corner is 1.15 mm inside the inner slope, like the keycaps. The USB-C and
+  the jack's barrel overhang. The reset button sits under the jack
+  (`tools/inner_strip.py`).
 - The holykeebs and Corne logos and the OLED-cover holes are removed; the
   switch plates carry the thumb-cluster logo (`tools/logo.py`).
 - Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40)

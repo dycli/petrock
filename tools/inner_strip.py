@@ -1,19 +1,26 @@
-"""Fit the controller corner to the inner top slope (tools/top_edge.py), which
-now sits lower at the inner edge: the controller (with the OLED header that
-goes with it) drops until its circuit board's top inner corner, where the slope
-is lowest, is INSET inside the edge (the USB connector overhangs), the jack's
-housing likewise (its round port overhangs), and the
-reset button moves into the strip beside the
-controller, just below the jack, where the switch plate leaves it reachable.
+"""Lay out each half's controller corner: across the strip between the inner
+index keycaps and the inner edge, the controller (a nice!nano's board) and the
+jack's body sit with even gaps (keycap, controller, jack, edge); each drops
+until its square top inner corner is EDGE_GAP inside the inner top slope
+(tools/top_edge.py), measured square to it as for the keycaps. The USB
+connector and the jack's round port overhang, as intended. The OLED header
+moves with the controller, and the reset button sits centred under the jack.
+
+Part sizes from their 3D models: the nice!nano's board is 17.78 x 33.0 mm, its
+USB end 3.79 mm beyond the pin nearest it (Nice_Nano_V2.step in infused-kim's
+kb_ergogen_fp, measured); the PJ320A jack's body is 6.0 mm wide, its front
+face at the footprint's origin, the round port 2 mm beyond it.
 
 usage: inner_strip.py IN OUT
 """
+import math
 import os
 import sys
 
 import pcbnew
 
 import parts
+import stagger
 import thumbs
 import top_edge
 import widen
@@ -23,11 +30,10 @@ PARTS = {   # controller, OLED header, jack, reset button
     "left": ("U1", "J2", "J1", "RSW1"),
     "right": ("U2", "J4", "J3", "RSW2"),
 }
-INSET = thumbs.EDGE_GAP    # controller's and jack's top inner corners inside the edge, like the keys
 RESET_BELOW_JACK = 2.0     # reset button's pads below the jack's
-# The jack's square housing (from its 3D model, PJ320A): 6 mm wide, centred on the
-# footprint origin, its port end at the origin; the round port sticks out 2 mm past it.
-JACK_HALF_W = 3.0
+CONTROLLER_W = 17.78       # nice!nano board
+CONTROLLER_USB_END = 3.79  # board's USB end beyond the nearest pin
+JACK_W = 6.0               # PJ320A body; the footprint origin is its front face, centred
 
 
 def mm(v):
@@ -40,47 +46,59 @@ def pads_box(f):
             mm(max(b.GetRight() for b in bb)), mm(max(b.GetBottom() for b in bb)))
 
 
-def fab_box(f):
-    bb = [g.GetBoundingBox() for g in f.GraphicalItems() if g.GetLayer() == pcbnew.F_Fab]
-    return (mm(min(b.GetLeft() for b in bb)), mm(min(b.GetTop() for b in bb)),
-            mm(max(b.GetRight() for b in bb)), mm(max(b.GetBottom() for b in bb)))
+def slope_gap(half, x, y):
+    """How far (x, y) sits inside the inner top slope, square to it."""
+    (_, _), k = top_edge.inner_line(half)
+    return (y - top_edge.on_line(half, x)) / math.hypot(1, k)
 
 
 def place(board, half):
+    side = 1 if half == "left" else -1             # +x is inward on the left half
     refs = PARTS[half]
     fp = {f.GetReference(): f for f in board.GetFootprints() if f.GetReference() in refs}
     u, oled, jack, reset = (fp[r] for r in refs)
-    # Controller (and its OLED header): its top inner corner just inside the edge.
-    x0, top, x1, _ = fab_box(u)
-    dy = top_edge.on_line(half, x1 if half == "left" else x0) + INSET - top
+    # Across the strip: keycap edge, gap, controller, gap, jack body, gap, board edge.
+    index_x = stagger.INNER_INDEX_X if half == "left" else widen.MIRROR_X - stagger.INNER_INDEX_X + widen.RIGHT_DX
+    keycap = index_x + side * thumbs.CAP_W / 2
+    edge = widen.inner_x(half)
+    gap = (abs(edge - keycap) - CONTROLLER_W - JACK_W) / 3
+    u_centre = keycap + side * (gap + CONTROLLER_W / 2)
+    j_centre = keycap + side * (2 * gap + CONTROLLER_W + JACK_W / 2)
+    # Controller: its board's top inner corner EDGE_GAP inside the slope.
+    px0, py0, px1, _ = pads_box(u)
+    pin_y = min(pcbnew.ToMM(p.GetPosition().y) for p in u.Pads())
+    cx = (px0 + px1) / 2
+    top = pin_y - CONTROLLER_USB_END
+    corner = u_centre + side * CONTROLLER_W / 2
+    dx = u_centre - cx
+    dy = thumbs.EDGE_GAP - slope_gap(half, corner, top)
+    # (solve for the drop exactly: moving down by d moves the corner d * cos square to the slope)
+    (_, _), k = top_edge.inner_line(half)
+    dy *= math.hypot(1, k)
     # With its copper: the tracks among its pins and the header's, and those
-    # running above it (the slope would cut them off), move whole; the ones
-    # leading away stretch (tools/parts.py drag).
+    # running above it, move whole; the ones leading away stretch (tools/parts.py drag).
     bx0, by0, bx1, by1 = (min(a, b) if i < 2 else max(a, b) for i, (a, b) in enumerate(zip(pads_box(u), pads_box(oled))))
-    parts.drag(board, [u, oled], parts.shift(0, dy),
+    parts.drag(board, [u, oled], parts.shift(dx, dy),
                inside=lambda p: bx0 - 1 <= p[0] <= bx1 + 1 and p[1] <= by1 + 1)
-    # Jack: likewise, its housing's top inner corner INSET inside the edge (the
-    # round port beyond it overhangs, like the controller's USB connector).
+    # Jack: its body's top inner corner EDGE_GAP inside the slope.
     jx, jy = mm(jack.GetPosition().x), mm(jack.GetPosition().y)
-    corner_x = jx + JACK_HALF_W if half == "left" else jx - JACK_HALF_W
-    parts.drag(board, [jack], parts.shift(0, top_edge.on_line(half, corner_x) + INSET - jy))
-    # Reset button: centred in the strip between the controller's pins and the
-    # inner edge, just below the jack.
-    ux0, _, ux1, _ = pads_box(u)
-    edge_x = widen.inner_x(half)
-    strip = (ux1, edge_x) if half == "left" else (edge_x, ux0)
+    j_corner = j_centre + side * JACK_W / 2
+    jdy = (thumbs.EDGE_GAP - slope_gap(half, j_corner, jy)) * math.hypot(1, k)
+    parts.drag(board, [jack], parts.shift(j_centre - jx, jdy))
+    # Reset button: centred under the jack.
     rx0, ry0, rx1, ry1 = pads_box(reset)
     _, _, _, jack_bottom = pads_box(jack)
-    target = ((strip[0] + strip[1]) / 2, jack_bottom + RESET_BELOW_JACK + (ry1 - ry0) / 2)
+    target = (j_centre, jack_bottom + RESET_BELOW_JACK + (ry1 - ry0) / 2)
     centre = ((rx0 + rx1) / 2, (ry0 + ry1) / 2)
     parts.drag(board, [reset], parts.shift(target[0] - centre[0], target[1] - centre[1]))
-    return dy
+    return dx, dy, gap
 
 
 def main(src, dst):
     board = pcbnew.LoadBoard(src)
     for half in PARTS:
-        print(half, "controller drops", round(place(board, half), 2), "mm")
+        dx, dy, gap = place(board, half)
+        print(f"{half}: gaps {gap:.2f} mm; controller moves {dx:+.2f}, drops {dy:.2f} mm")
     board.Save(dst)
 
 

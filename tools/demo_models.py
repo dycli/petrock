@@ -1,6 +1,6 @@
 """Simple VRML stand-in models for the demo renders: the trackpoint nub, the
 SK8707 sensor and driver boards (coloured from Sprintek's parts,
-ref/sk8707-01-004-top.png), and the RP2040 Pro Micro controller (the stock
+ref/sk8707-01-004-top.png), and the controller, a nice!nano (the stock
 models come in one flat colour)."""
 import math
 import os
@@ -91,13 +91,16 @@ def sensor(path):
 
 
 def controller(path):
-    """An RP2040 Pro Micro as a Corne mounts it, face down on 2.5 mm sockets, in
-    its footprint's frame (holykeebs ProMicro): seen from above, the board's back
-    (black, gold pin rings), the USB-C shell sticking out at the top end. Pins
-    1-12 at x = +7.61, 13-24 at -7.61, 2.54 mm apart from y = -14.48."""
-    z0, t = 2.5, 1.6
-    parts = [box_shape(0, -1.04, 17.9, 31.7, z0, t, BLACK_MASK),          # the board
-             box_shape(0, -16.9, 8.9, 3.2, z0 - 3.2 + t, 3.2, STEEL)]    # USB-C, on the face-down side, at the top end
+    """A nice!nano as Petrock mounts it, face down on 5 mm sockets, in its
+    footprint's frame (holykeebs ProMicro): seen from above, the board's back
+    (black, gold pin rings), the USB-C shell 0.8 mm past the top end. Sizes from
+    Nice_Nano_V2.step (tools/inner_strip.py): board 17.78 x 33.0 mm, its USB end
+    3.79 mm beyond the first pin. Pins 1-12 at x = +7.61, 13-24 at -7.61, 2.54 mm
+    apart from y = -14.48."""
+    z0, t = 5.0, 1.6
+    top, bottom = -14.48 - 3.79, -14.48 + 11 * 2.54 + 1.27
+    parts = [box_shape(0, (top + bottom) / 2, 17.78, bottom - top, z0, t, BLACK_MASK),        # the board
+             box_shape(0, top - 0.8 + 3.65, 8.94, 7.3, z0 - 3.2 + t, 3.2, STEEL)]           # USB-C, 0.8 mm proud
     for x in (-7.61, 7.61):
         parts.append(box_shape(x, -0.51, 2.5, 30.5, 0, z0, HEADER))      # the socket strips
         for i in range(12):
