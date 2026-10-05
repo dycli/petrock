@@ -35,16 +35,9 @@ TOP_TARGET = centre(stagger.INNER_PINKY_X, stagger.RING_X, 0)        # pinky | r
 TARGET = centre(stagger.INNER_PINKY_X, stagger.RING_X, 2)            # pinky | ring, rows 3-4
 INDEX_TARGET = centre(98.5, stagger.INNER_INDEX_X, 0)                 # index | inner index, rows 1-2
 def notch_target():
-    """The one by the trackpoint: in the logo's open 90-degree notch (between its
-    two lower arms), at the centre of the rectangle the notch makes when mirrored
-    about its two arm tips: midway between the tips."""
-    pts = logo.placed()
-    turn = lambda i: math.degrees(math.atan2(
-        (pts[i - 1][0] - pts[i][0]) * (pts[(i + 1) % len(pts)][1] - pts[i][1]) - (pts[i - 1][1] - pts[i][1]) * (pts[(i + 1) % len(pts)][0] - pts[i][0]),
-        (pts[i - 1][0] - pts[i][0]) * (pts[(i + 1) % len(pts)][0] - pts[i][0]) + (pts[i - 1][1] - pts[i][1]) * (pts[(i + 1) % len(pts)][1] - pts[i][1])))
-    i = max((i for i in range(len(pts)) if abs(turn(i) - 90) < 1), key=lambda i: pts[i][1])   # the lower notch
-    a, b = pts[i - 1], pts[(i + 1) % len(pts)]
-    return ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+    """The one by the trackpoint: at the centre of the key cell the logo's notch
+    outlines (tools/logo.py notch_centre)."""
+    return logo.notch_centre()
 
 
 def thumb_target():

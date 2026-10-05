@@ -18,7 +18,12 @@ and the right half its mirror image. The plate is the right half's design, so
 it carries the mirror image on both faces; the left plate, flipped, shows it
 upright.
 
-usage: logo.py BOARD pcb|plate   (edits BOARD in place)
+In the logo's open notch, at the centre of the key cell it outlines (midway
+between its two arm tips), sits a standoff (tools/standoffs.py) and a DOT mm
+dot like the trackpoint's cap: solid on the plate, and on the PCB a ring round
+the standoff, clear of its pad and screw head.
+
+usage: logo.py BOARD pcb|plate|dot-pcb   (edits BOARD in place; dot-pcb adds only the PCB's ring)
 """
 import math
 import os
@@ -72,6 +77,43 @@ def placed():
     return [(left + (x - min(xs)) * s, top + (y - min(ys)) * s) for x, y in sh]
 
 
+DOT = 7.0                   # the dot's diameter, a trackpoint cap's
+RING_IN = 2.0               # the PCB ring's inner radius: clear of the standoff's 3.3 mm pad and 3.8 mm screw head
+
+
+def notch_centre():
+    """Left half, upstream frame: the centre of the key cell the logo's lower notch
+    (its 90-degree inside corner) outlines: midway between the notch's arm tips."""
+    pts = placed()
+    n = len(pts)
+
+    def turn(i):
+        a, v, b = pts[i - 1], pts[i], pts[(i + 1) % n]
+        u, w = (a[0] - v[0], a[1] - v[1]), (b[0] - v[0], b[1] - v[1])
+        return math.degrees(math.atan2(u[0] * w[1] - u[1] * w[0], u[0] * w[0] + u[1] * w[1]))
+    i = max((i for i in range(n) if abs(turn(i) - 90) < 1), key=lambda i: pts[i][1])
+    a, b = pts[i - 1], pts[(i + 1) % n]
+    return ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+
+
+def circle(board, centre, radius, layer, width=0.0):
+    """A filled dot (width 0) or a ring of the given stroke width."""
+    c = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_CIRCLE)
+    c.SetCenter(pcbnew.VECTOR2I(MM(centre[0]), MM(centre[1])))
+    c.SetEnd(pcbnew.VECTOR2I(MM(centre[0] + radius), MM(centre[1])))
+    c.SetFilled(width == 0)
+    c.SetWidth(MM(width))
+    c.SetLayer(layer)
+    board.Add(c)
+
+
+def pcb_rings(board):
+    x, y = notch_centre()
+    r0, r1 = RING_IN, DOT / 2
+    for cx in (x, widen.MIRROR_X - x + widen.RIGHT_DX):
+        circle(board, (cx, y), (r0 + r1) / 2, pcbnew.F_SilkS, r1 - r0)
+
+
 def add(board, pts, layer):
     poly = pcbnew.SHAPE_POLY_SET()
     poly.NewOutline()
@@ -88,13 +130,18 @@ def add(board, pts, layer):
 def main(path, target):
     pts = placed()
     board = pcbnew.LoadBoard(path)
-    if target == "pcb":
+    if target == "dot-pcb":
+        pcb_rings(board)
+    elif target == "pcb":
         add(board, pts, pcbnew.F_SilkS)
         add(board, [(widen.MIRROR_X - x + widen.RIGHT_DX, y) for x, y in pts], pcbnew.F_SilkS)
+        pcb_rings(board)
     else:
         on_plate = [(widen.MIRROR_X - x + plate.PLATE_DX, y) for x, y in pts]     # the right half's design
+        x, y = notch_centre()
         for layer in (pcbnew.F_SilkS, pcbnew.B_SilkS):
             add(board, on_plate, layer)
+            circle(board, (widen.MIRROR_X - x + plate.PLATE_DX, y), DOT / 2, layer)
     board.Save(path)
     xs, ys = [p[0] for p in pts], [p[1] for p in pts]
     print("logo %.1f x %.1f mm" % (max(xs) - min(xs), max(ys) - min(ys)))

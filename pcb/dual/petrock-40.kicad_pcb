@@ -42484,6 +42484,28 @@
 		(layer "F.SilkS")
 		(uuid "269f2632-b482-4d85-93c9-76f4b2d72950")
 	)
+	(gr_circle
+		(center 79.289742 122.374582)
+		(end 82.039742 122.374582)
+		(stroke
+			(width 1.5)
+			(type default)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "3246b45d-cf55-4c45-97ab-6765c6625bf6")
+	)
+	(gr_circle
+		(center 232.420257 122.374582)
+		(end 235.170257 122.374582)
+		(stroke
+			(width 1.5)
+			(type default)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "bdb9e323-79e4-4f36-b2e7-66877cd39191")
+	)
 	(gr_line
 		(start 34.6 56.670966)
 		(end 71.674625 51.79)
