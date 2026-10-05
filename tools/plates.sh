@@ -32,4 +32,4 @@ done
 bin/kpy tools/bottom_plate.py $B/out.kicad_pcb $OUT/bottom.kicad_pcb
 [ -f $OUT/bottom.kicad_pro ] || cp "$PRO" $OUT/bottom.kicad_pro
 bin/kpy tools/printout.py $B/out.kicad_pcb $B/printout.svg
-/nix/store/ii7wr6b6b8c5fq1ci26rw7amkb4apwm8-librsvg-2.62.3/bin/rsvg-convert -f pdf -o $PRINT.pdf $B/printout.svg
+.nix/librsvg/bin/rsvg-convert -f pdf -o $PRINT.pdf $B/printout.svg

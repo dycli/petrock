@@ -131,6 +131,7 @@ def main(src, dst):
         pts = halves["right" if cx > widen.SPLIT_X + widen.RIGHT_DX / 2 else "left"]
         x0, y0 = min(p[0] for p in pts) - ZONE_MARGIN, min(p[1] for p in pts) - ZONE_MARGIN
         x1, y1 = max(p[0] for p in pts) + ZONE_MARGIN, max(p[1] for p in pts) + ZONE_MARGIN
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)   # no floating pour fragments
         o = z.Outline()
         o.RemoveAllContours()
         o.NewOutline()

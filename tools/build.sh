@@ -61,8 +61,9 @@ links() {
   local vias
   vias=$(bin/kpy tools/tp_links.py $B/out.kicad_pcb $1 $2 | grep '^S')
   while read -r pad x y; do
-    route TP_S${pad#S}$3 0.25 $1:$pad "$x,$y,F"
-    route TP_S${pad#S}$3 0.25 $2:$pad "$x,$y,B"
+    # (one that doesn't fit is left to the general router below)
+    route TP_S${pad#S}$3 0.25 $1:$pad "$x,$y,F" || true
+    route TP_S${pad#S}$3 0.25 $2:$pad "$x,$y,B" || true
   done <<<"$vias"
 }
 links TP1 TP2 ""
@@ -81,11 +82,11 @@ for pass in 1 2 3 4; do
   [ "$(open_count $B/drc.json)" = 0 ] && break
 done
 # Last resort for a connection boxed in by stock copper: stock may be ripped up too.
-if [ "$(open_count $B/drc.json)" != 0 ]; then
-  unset KEEP_IDS
+unset KEEP_IDS
+for pass in 1 2 3 4; do
+  [ "$(open_count $B/drc.json)" = 0 ] && break
   connect
-  connect
-fi
+done
 bin/kpy tools/solid_starved.py $B/out.kicad_pcb $B/drc.json
 bin/kcli pcb drc --refill-zones --save-board -o $B/drc.rpt $B/out.kicad_pcb >/dev/null 2>&1 || true
 drc $B/out.kicad_pcb $B/drc.json

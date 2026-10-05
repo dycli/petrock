@@ -3,7 +3,7 @@
 set -e
 board=$1 out=$2 x0=$3 y0=$4 x1=$5 y1=$6 layers=${7:-B.Cu,F.Cu,Edge.Cuts,F.Courtyard,F.Silkscreen}
 tmp=$(mktemp -d)
-/nix/store/zxkq3n4h46mhs5v53zc0qw9gbpnz763p-kicad-small-10.0.6/bin/kicad-cli pcb export svg --mode-single --layers "$layers" --exclude-drawing-sheet --page-size-mode 0 -o "$tmp/b.svg" "$board" >/dev/null 2>&1
+"$(dirname "$(readlink -f "$0")")/kcli" pcb export svg --mode-single --layers "$layers" --exclude-drawing-sheet --page-size-mode 0 -o "$tmp/b.svg" "$board" >/dev/null 2>&1
 python3 - "$tmp/b.svg" "$x0" "$y0" "$x1" "$y1" <<'PY'
 import re,sys
 p,x0,y0,x1,y1=sys.argv[1],*map(float,sys.argv[2:])
@@ -13,5 +13,5 @@ s=re.sub(r'(<svg[^>]*?)width="[^"]*"', rf'\1width="{(x1-x0)*20}"', s, count=1)
 s=re.sub(r'(<svg[^>]*?)height="[^"]*"', rf'\1height="{(y1-y0)*20}"', s, count=1)
 open(p,'w').write(s)
 PY
-/nix/store/ii7wr6b6b8c5fq1ci26rw7amkb4apwm8-librsvg-2.62.3/bin/rsvg-convert -b white "$tmp/b.svg" -o "$out"
+"$(dirname "$(readlink -f "$0")")/../.nix/librsvg/bin/rsvg-convert" -b white "$tmp/b.svg" -o "$out"
 rm -rf "$tmp"

@@ -8,3 +8,4 @@ ref/
 __pycache__/
 printout*.pdf
 demo/models/
+.nix/

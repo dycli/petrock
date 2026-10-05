@@ -4,10 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 B=build
-K=/nix/store/59y7zdn75ah5v12aw5zhkha8s7l8h1jp-kicad-10.0.6/bin/kicad-cli      # full KiCad, with the 3D renderer
-P3D=/nix/store/nrzp8rbq9nj5a81mc2g4xyqvmg68z0bk-kicad-packages3d-125f026865/share/kicad/3dmodels
-RSVG=/nix/store/ii7wr6b6b8c5fq1ci26rw7amkb4apwm8-librsvg-2.62.3/bin/rsvg-convert
-PIL=/nix/store/jdln7vmhsis96vrwiph1cydi0xyf324h-python3.14-pillow-12.3.0/lib/python3.14/site-packages
+K=.nix/kicad-full/bin/kicad-cli      # full KiCad, with the 3D renderer
+P3D=$PWD/.nix/packages3d/share/kicad/3dmodels
+RSVG=.nix/librsvg/bin/rsvg-convert
+PIL=.nix/pillow/lib/python3.14/site-packages
 
 mkdir -p $B/models
 [ -d $B/models/marbastlib ] || git clone -q --depth 1 https://github.com/ebastler/marbastlib $B/models/marbastlib
@@ -62,7 +62,7 @@ R -o demo/16-no-oled-top.png -w 2600 -h 1300 --side top --zoom 1.65 $B/demo-nool
 # Close-ups are crops of one big angled render.
 R -o $B/big-angled.png -w 6400 -h 3700 --side top --perspective --rotate '-35,0,0' --zoom 1.5 $B/demo.kicad_pcb
 R -o $B/big-assembled.png -w 6400 -h 3700 --side top --perspective --rotate '-35,0,0' --zoom 1.5 $B/demo-assembled.kicad_pcb
-PYTHONPATH=$PIL /nix/store/lb41b0anx1f98y9y5s9mdv97gjgsq740-python3-3.14.7/bin/python3.14 - $B/big-angled.png $B/big-assembled.png <<'EOF'
+PYTHONPATH=$PIL .nix/python/bin/python3.14 - $B/big-angled.png $B/big-assembled.png <<'EOF'
 import sys
 from PIL import Image
 for src, name, box in ((1, "03-trackpoint-closeup", (0.50, 0.44, 0.78, 0.72)),

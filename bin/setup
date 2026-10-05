@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Pin the tools the build uses as GC roots in .nix/, so a system update or garbage
+# collection can't remove them: KiCad 10.0.6 (small, for the CLI and pcbnew; full,
+# for 3D renders), its 3D models, and the Python, numpy, Pillow and librsvg they use.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+mkdir -p .nix
+root() { nix-store --realise "/nix/store/$1" --add-root ".nix/$2" --indirect >/dev/null; }
+root zxkq3n4h46mhs5v53zc0qw9gbpnz763p-kicad-small-10.0.6 kicad
+root 59y7zdn75ah5v12aw5zhkha8s7l8h1jp-kicad-10.0.6 kicad-full
+root m7r81k5pxx6w7crynavz7pqp2msddnnr-kicad-base-10.0.6 kicad-base
+root nrzp8rbq9nj5a81mc2g4xyqvmg68z0bk-kicad-packages3d-125f026865 packages3d
+root lb41b0anx1f98y9y5s9mdv97gjgsq740-python3-3.14.7 python
+root 5w5s4965dcmmi5z8mwh8y786gh8gdixp-python3.14-numpy-2.5.2 numpy
+root jdln7vmhsis96vrwiph1cydi0xyf324h-python3.14-pillow-12.3.0 pillow
+root ii7wr6b6b8c5fq1ci26rw7amkb4apwm8-librsvg-2.62.3 librsvg

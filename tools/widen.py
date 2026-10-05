@@ -23,6 +23,7 @@ INNER_X = 146.71         # upstream left half's straight inner edge
 
 TOP_EDGE = 56.96
 JACK_PORT = 0.25         # jack origin sits this far inside its port edge
+JACK_PAD_LEN = 2.1       # slot pads' length along the jack (stock 2.5): 0.9 mm between data and ground
 # Beside each controller, as placed for MIN_WIDEN (pads clear the edge by about
 # 1 mm); any extra widening splits evenly either side of the jack (jack_x).
 JACKS = {"J1": 149.39, "J3": 149.92}
@@ -83,6 +84,11 @@ def main(src, dst):
         for pad in fp.Pads():
             if pad.GetNumber() == "C":
                 pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
+            # Shorter slot pads leave 0.9 mm between data and ground for hand
+            # soldering (stock: 0.5 mm), with a 0.3 mm ring round the 1.5 mm slot.
+            if pad.GetNumber() in ("A", "B", "C", "D"):
+                size = pad.GetSize(pcbnew.F_Cu)
+                pad.SetSize(pcbnew.F_Cu, pcbnew.VECTOR2I(size.x, MM(JACK_PAD_LEN)))
         p = (x, TOP_EDGE + JACK_PORT)
         fp.SetPosition(V(rx(p) if ref == "J3" else p))
     board.Save(dst)

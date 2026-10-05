@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-exec /nix/store/zxkq3n4h46mhs5v53zc0qw9gbpnz763p-kicad-small-10.0.6/bin/kicad-cli "$@"
+# KiCad's command-line tool, from the GC-rooted link in .nix/ (see bin/setup).
+exec "$(dirname "$(readlink -f "$0")")/../.nix/kicad/bin/kicad-cli" "$@"

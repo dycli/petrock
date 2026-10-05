@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
-export PYTHONPATH=/nix/store/m7r81k5pxx6w7crynavz7pqp2msddnnr-kicad-base-10.0.6/lib/python3.14/site-packages:/nix/store/5w5s4965dcmmi5z8mwh8y786gh8gdixp-python3.14-numpy-2.5.2/lib/python3.14/site-packages
+# Python with KiCad's pcbnew module, from the GC-rooted links in .nix/ (see bin/setup).
+N="$(dirname "$(readlink -f "$0")")/../.nix"
+export PYTHONPATH=$N/kicad-base/lib/python3.14/site-packages:$N/numpy/lib/python3.14/site-packages
 export KICAD10_FOOTPRINT_DIR=/dev/null
-exec /nix/store/lb41b0anx1f98y9y5s9mdv97gjgsq740-python3-3.14.7/bin/python3.14 "$@" 2>&1 | grep -av -e "^swig/python detected" -e "GetWidth called" -e "Font .* not found"; exit ${PIPESTATUS[0]}
+exec "$N/python/bin/python3.14" "$@" 2>&1 | grep -av -e "^swig/python detected" -e "GetWidth called" -e "Font .* not found"; exit ${PIPESTATUS[0]}
