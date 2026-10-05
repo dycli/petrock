@@ -25,6 +25,7 @@ MM = pcbnew.FromMM
 PLATE_DX = -4.0
 SENSOR_MARGIN = 0.3      # plate opening round the trackpoint sensor board (it is soldered in place)
 INNER_X = 167.81         # plate frame: the stock plate's straight inner edge
+PLATE_THICKNESS = 1.2    # mm: order the switch plates at this thickness
 OLED_CLEAR = 1.0         # plate edge to the OLED header's pads
 DX = -widen.RIGHT_DX + PLATE_DX
 
@@ -117,6 +118,8 @@ def main(stock, pcb_path, dst, dst_tp):
     plate = pcbnew.SHAPE_POLY_SET(board_outline)
     plate.BooleanIntersection(keep(oled))
     board = pcbnew.LoadBoard(stock)
+    # Choc v1 switches and stabilisers clip into a 1.2 mm plate; 1.6 mm FR4 is too thick.
+    board.GetDesignSettings().SetBoardThickness(MM(PLATE_THICKNESS))
     old = list(board.GetFootprints()) + [d for d in board.GetDrawings() if d.GetLayer() == pcbnew.Edge_Cuts]
     template = pcbnew.FOOTPRINT(old[0])
     for item in old:                  # removing invalidates other handles, so all at once

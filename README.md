@@ -65,7 +65,9 @@ the board or in a new clash is cut, and only what is then open is routed
    (`tools/drcdiff.py`) and report how much stock copper is unchanged
    (`tools/reuse.py`).
 
-Then `tools/plates.sh` makes the plates and the 1:1 printout (print it with
+Then `tools/plates.sh` makes the plates (order the switch plates at 1.2 mm,
+which choc switches clip into; the main board and bottom plate at 1.6 mm) and
+the 1:1 printout (print it with
 scaling off, e.g. `lp -o print-scaling=none`). `tools/fab.sh [single|dual]`
 writes Gerber and drill zips and JLC's assembly BOM and placement (diodes and
 hot-swap sockets) to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.
