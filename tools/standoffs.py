@@ -34,12 +34,9 @@ def centre(x0, x1, row):
 TOP_TARGET = centre(stagger.INNER_PINKY_X, stagger.RING_X, 0)        # pinky | ring, rows 1-2
 TARGET = centre(stagger.INNER_PINKY_X, stagger.RING_X, 2)            # pinky | ring, rows 3-4
 INDEX_TARGET = centre(98.5, stagger.INNER_INDEX_X, 0)                 # index | inner index, rows 1-2
-def notch_target():
-    """The one by the trackpoint: at the centre of the key cell the logo's notch
-    outlines (tools/logo.py notch_centre)."""
-    return logo.notch_centre()
-
-
+INDEX_BOTTOM_TARGET = centre(98.5, stagger.INNER_INDEX_X, 2)          # index | inner index, below row 3
+# The four make a rectangle: the pinky sits a step below the ring column and the
+# inner index a step below the index, so both bottom centres share a height.
 def thumb_target():
     """The thumb one: equally far from the three keycap corners round it (the inner
     index column's bottom key, the middle thumb key, the upper inner thumb key)."""
@@ -167,12 +164,12 @@ def main(src, dst):
     # goes low by the trackpoint.
     upper, lower = sorted(sorted(spacers, key=x)[:2], key=y)
     left = [f for f in spacers if x(f) < widen.SPLIT_X]
-    mid = min(left, key=lambda f: math.hypot(x(f) - 76.41, y(f) - 109.18))   # stock's bottom middle one
+    mid = min(left, key=lambda f: math.hypot(x(f) - 76.41, y(f) - 109.18))   # stock's bottom middle one, moved to the index bottom
     index = min(left, key=lambda f: math.hypot(x(f) - 107.25, y(f) - 72.05))   # stock's, between index and inner index
     thumb = min(left, key=lambda f: math.hypot(x(f) - 125.73, y(f) - 113.73))  # stock's, by the thumbs
     for f, target, name in ((upper, TOP_TARGET, "outer top"), (lower, TARGET, "outer bottom"),
                             (index, INDEX_TARGET, "index top"), (thumb, thumb_target(), "thumb"),
-                            (mid, notch_target(), "by the trackpoint")):
+                            (mid, INDEX_BOTTOM_TARGET, "index bottom")):
         px, py = move(board, (f, twin(f)), target, outline, mark)
         print(f"{name} standoff: {px:.2f}, {py:.2f}")
     board.Save(dst)

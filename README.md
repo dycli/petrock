@@ -46,16 +46,17 @@ the board or in a new clash is cut, and only what is then open is routed
   top corner is 1.15 mm inside the inner slope, like the keycaps. The USB-C and
   the jack's barrel overhang. The reset button sits under the jack
   (`tools/inner_strip.py`).
-- The holykeebs and Corne logos and the OLED-cover holes are removed; the
-  board and the switch plates carry the Petrock logo (`tools/logo.py`), and the
+- The holykeebs and Corne logos are removed; the board and the switch plates
+  carry the Petrock logo with a 7 mm dot in its notch (`tools/logo.py`), and the
   jack, reset button and OLED header have no printed outlines
   (`tools/quiet_silk.py`).
 - Five standoffs per half, as stock, placed by geometry (`tools/standoffs.py`):
-  three where four keys meet, each at the four keys' centre (pinky and ring
-  columns between their top two and bottom two rows, index and inner index
-  between their top two); one at the thumbs, equally far from its three keycap
-  corners; and one in the logo's notch, at the centre of the key cell the notch
-  outlines. A key diode may move a fraction to make room, if it stays clear.
+  four where four keys meet, each at the four keys' centre, forming a 54 x 34 mm
+  rectangle (pinky and ring columns, and index and inner index columns, each
+  between their top two rows and below their third); and one at the thumbs,
+  equally far from its three keycap corners. A key diode may move a fraction to
+  make room, if it stays clear. The switch plate has a screw hole over each
+  (`tools/plate.py`), as stock.
 - Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40)
   has an opening for the trackpoint sensor; a new FR4 bottom plate fits the
   outline.
@@ -87,6 +88,29 @@ hot-swap sockets) to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.
 
 Outputs: `pcb/petrock-41*.kicad_pcb` and `pcb/bottom.kicad_pcb`;
 `pcb/dual/petrock-40*.kicad_pcb` and `pcb/dual/bottom.kicad_pcb`.
+
+## Assembly
+
+The stack, per standoff: a top screw through the switch plate's 2.1 mm hole
+into a spacer that passes through the main board's 3.1 mm hole down to the
+bottom plate, where a bottom screw holds it. The switch plate and bottom plate
+clamp the spacers; the main board hangs from the switches (clipped into the
+plate, pins in the hot-swap sockets), 1.0 mm under the plate.
+
+- 10 round M2 x 5 mm female-female spacers, 3.0 mm across (knurled brass ones
+  are common; hex ones don't pass the 3.1 mm holes). 5 mm, not holykeebs' 4 mm:
+  it leaves 2.4 mm under the main board for the sockets (1.85 mm) and the
+  trackpoint drivers (about 2.1 mm).
+- Top screws (they sit on the plate, beside the switches): the four where four
+  keys meet sit between switch housings (15 mm square on an 18 x 17 mm grid),
+  so their heads must be about 3.0 mm across or less: M2 low small-head socket
+  screws (e.g. MISUMI's; check the listed head diameter), or M1.6 socket caps
+  (3.0 mm heads) with M1.6 spacers at those four. The thumb one and the 10
+  underneath: ordinary low M2 x 3 mm screws (e.g. ISO 7380, holykeebs').
+- Order: spacers up through the main board, bottom plate on; switch plate on
+  and its screws in; then the switches, which draw the main board up as they seat.
+- Rubber feet: near the standoffs, and two along the bottom edge (by the outer
+  corner and under the trackpoint), which has no standoff.
 
 ## Firmware
 

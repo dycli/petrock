@@ -19,11 +19,10 @@ it carries the mirror image on both faces; the left plate, flipped, shows it
 upright.
 
 In the logo's open notch, at the centre of the key cell it outlines (midway
-between its two arm tips), sits a standoff (tools/standoffs.py) and a DOT mm
-dot like the trackpoint's cap: solid on the plate, and on the PCB a ring round
-the standoff, clear of its pad and screw head.
+between its two arm tips), sits a DOT mm dot like the trackpoint's cap, on
+the PCB and the plate.
 
-usage: logo.py BOARD pcb|plate|dot-pcb   (edits BOARD in place; dot-pcb adds only the PCB's ring)
+usage: logo.py BOARD pcb|plate   (edits BOARD in place)
 """
 import math
 import os
@@ -78,7 +77,6 @@ def placed():
 
 
 DOT = 7.0                   # the dot's diameter, a trackpoint cap's
-RING_IN = 2.0               # the PCB ring's inner radius: clear of the standoff's 3.3 mm pad and 3.8 mm screw head
 
 
 def notch_centre():
@@ -107,11 +105,10 @@ def circle(board, centre, radius, layer, width=0.0):
     board.Add(c)
 
 
-def pcb_rings(board):
+def pcb_dots(board):
     x, y = notch_centre()
-    r0, r1 = RING_IN, DOT / 2
     for cx in (x, widen.MIRROR_X - x + widen.RIGHT_DX):
-        circle(board, (cx, y), (r0 + r1) / 2, pcbnew.F_SilkS, r1 - r0)
+        circle(board, (cx, y), DOT / 2, pcbnew.F_SilkS)
 
 
 def add(board, pts, layer):
@@ -130,12 +127,10 @@ def add(board, pts, layer):
 def main(path, target):
     pts = placed()
     board = pcbnew.LoadBoard(path)
-    if target == "dot-pcb":
-        pcb_rings(board)
-    elif target == "pcb":
+    if target == "pcb":
         add(board, pts, pcbnew.F_SilkS)
         add(board, [(widen.MIRROR_X - x + widen.RIGHT_DX, y) for x, y in pts], pcbnew.F_SilkS)
-        pcb_rings(board)
+        pcb_dots(board)
     else:
         on_plate = [(widen.MIRROR_X - x + plate.PLATE_DX, y) for x, y in pts]     # the right half's design
         x, y = notch_centre()

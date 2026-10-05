@@ -30,6 +30,7 @@ SENSOR_MARGIN = 0.3      # plate opening round the trackpoint sensor board (it i
 # the same line), so the plate clears the controller's socket strips.
 INNER_X = widen.MIRROR_X - stagger.INNER_INDEX_X - thumbs.CAP_W / 2 + PLATE_DX
 PLATE_THICKNESS = 1.2    # mm: order the switch plates at this thickness
+SCREW_HOLE = 2.1         # mm: the stock plate's M2 holes over the standoffs
 OLED_CLEAR = 1.0         # plate edge to the OLED header's pads
 DX = -widen.RIGHT_DX + PLATE_DX
 
@@ -105,7 +106,27 @@ def pcb_parts(path):
             sensor.Inflate(MM(SENSOR_MARGIN), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, MM(0.01))
             sensor.Move(pcbnew.VECTOR2I(MM(DX), 0))
     oled = [(x0 + DX, y0, x1 + DX, y1) for x0, y0, x1, y1 in oled]
-    return half, keys, tp_key, sensor, oled
+    standoffs = [to_plate((pcbnew.ToMM(f.GetPosition().x), pcbnew.ToMM(f.GetPosition().y)))
+                 for f in pcb.GetFootprints()
+                 if f.GetFPIDAsString() == "holykeebs:M2_SPACER" and pcbnew.ToMM(f.GetPosition().x) > split]
+    return half, keys, tp_key, sensor, oled, standoffs
+
+
+def screw_hole(board, n, at):
+    """An unplated SCREW_HOLE mm hole: the top screw goes through the plate into the
+    standoff's spacer, which stands through the PCB (as on the stock plate)."""
+    f = pcbnew.FOOTPRINT(board)
+    f.SetReference(f"H{n}")
+    f.SetPosition(pcbnew.VECTOR2I(MM(at[0]), MM(at[1])))
+    pad = pcbnew.PAD(f)
+    pad.SetAttribute(pcbnew.PAD_ATTRIB_NPTH)
+    pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
+    pad.SetSize(pcbnew.VECTOR2I(MM(SCREW_HOLE), MM(SCREW_HOLE)))
+    pad.SetDrillSize(pcbnew.VECTOR2I(MM(SCREW_HOLE), MM(SCREW_HOLE)))
+    pad.SetLayerSet(pcbnew.LSET.AllCuMask())
+    f.Add(pad)
+    pad.SetPosition(f.GetPosition())
+    board.Add(f)
 
 
 def edge(board, shape):
@@ -118,7 +139,7 @@ def edge(board, shape):
 
 
 def main(stock, pcb_path, dst, dst_tp):
-    board_outline, keys, tp_key, sensor, oled = pcb_parts(pcb_path)
+    board_outline, keys, tp_key, sensor, oled, standoffs = pcb_parts(pcb_path)
     plate = pcbnew.SHAPE_POLY_SET(board_outline)
     plate.BooleanIntersection(keep(oled))
     board = pcbnew.LoadBoard(stock)
@@ -143,6 +164,8 @@ def main(stock, pcb_path, dst, dst_tp):
     for n, (at, deg) in enumerate(sorted(keys), 1):
         hole(n, at, deg)
     edge(board, plate)
+    for n, at in enumerate(sorted(standoffs), 1):
+        screw_hole(board, n, at)
     tp_hole = hole(len(keys) + 1, *tp_key)
     board.Save(dst)
     if dst_tp:
