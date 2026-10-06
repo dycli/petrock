@@ -10,10 +10,9 @@ f149b9b), licensed CC-BY-SA-4.0. This derivative uses the same licence.
 
 ## Changes from the Corne Choc
 
-The board is built from the stock file with as few changes to its copper as
-the layout allows: parts move with their tracks, only copper that ends up off
-the board or in a new clash is cut, and only what is then open is routed
-(see Build). About 60% of the stock copper stays, in place or carried along.
+The board is built from the stock file: its parts move to the new layout, and
+every wire is then drawn afresh by rule (see Build). The stock schematic's
+connections stay, apart from the thumbs' columns (see Firmware).
 
 - **No lighting.** Every per-key and underglow LED, the LED supply diodes and
   the LED wiring are gone (`tools/no_leds.py`). An RGB version may follow.
@@ -68,22 +67,25 @@ the board or in a new clash is cut, and only what is then open is routed
 
 `tools/build.sh [single|dual]` regenerates a board from the stock file:
 
-1. **Place:** strip the lighting, then move every part to the layout, dragging
-   its copper (`tools/parts.py drag`).
-2. **Fit:** nudge copper the new edge crowds back inside it (`tools/edge_fit.py`).
-3. **Trim:** cut copper off the board or in a clash the stock board didn't
-   already have (`tools/trim.py`; stock already breaks DRC in places, e.g. by
-   its LED windows).
-4. **Route:** the trackpoint links (`tools/tp_links.py`), then everything open
-   (`tools/autoconnect.py` driving `tools/maze.py`), never ripping up stock
-   copper; strip dead ends; diff DRC against the stock board's
-   (`tools/drcdiff.py`) and report how much stock copper is unchanged
-   (`tools/reuse.py`).
+1. **Place:** strip the lighting, then move every part to the layout
+   (`tools/parts.py drag`).
+2. **Route by rule** (`tools/route.py`), as a careful hand would: each column a
+   straight line up the front through its switch pins; each row a line along
+   the back under its keys, stepping 45 degrees in the gap between columns;
+   every diode in the same place beside its key with the same two short links;
+   the column wires gathered into an evenly spaced bus in the gap under the
+   middle row and fanned into the controller in a staircase; the trackpoint
+   wires and power in a bundle up the lane between the middle and index
+   columns and along the top edge; every bend 45 degrees, no right angles
+   except where a wire joins another. Then ground is poured on both sides and
+   stitched together with vias (`tools/stitch.py`).
+3. **Check:** the build fails unless DRC finds nothing but the stock
+   footprints' library notices and every connection is made.
 
 Then `tools/plates.sh` makes the plates (order the switch plates at 1.2 mm,
-which choc switches clip into; the main board and bottom plate at 1.6 mm; the
-main board in ENIG, for flat gold pads under the trackpoint driver's
-castellations; the plates have no exposed copper, so the cheapest finish)
+which choc switches clip into; the main board and bottom plate at 1.6 mm; all
+in HASL, the cheapest finish: the trackpoint driver's pads are hand-soldered
+and wide enough that ENIG's flatness isn't needed)
 and the 1:1 printout (print it with
 scaling off, e.g. `lp -o print-scaling=none`). `tools/fab.sh [single|dual]`
 writes Gerber and drill zips and JLC's assembly BOM and placement (diodes and
@@ -117,9 +119,12 @@ plate, pins in the hot-swap sockets), 1.0 mm under the plate.
 
 ## Firmware
 
-- Matrix (each half, right with `_r` nets): pinky fourth key row 3 col 1; ring
-  fourth key row 3 col 2; upper inner thumb row 3 col 0; rows 0-2 of col 0
-  are empty. The trackpoint replaces the outer thumb key (row 3 col 3).
+- Matrix (each half, right with `_r` nets): rows 0-2 are the three full rows,
+  columns 1-5 pinky to inner index. Row 3 is the bottom pinky key (col 1), the
+  bottom ring key (col 2) and the thumbs, outer to inner: col 3, col 4, col 5.
+  Col 0 is unused, except on the 41's left half, which has four thumbs: there
+  the extra outermost one (in the trackpoint's place) is col 3, the next two
+  col 4 and col 5, and the innermost col 0.
 - Wired (QMK, RP2040 Pro Micro): split serial on pin 11 (`SOFT_SERIAL_PIN GP8`,
   PIO driver); PS/2 `PS2_CLOCK_PIN GP0`, `PS2_DATA_PIN GP1` (PIO driver).
 - Wireless (ZMK, nice!nano): PS/2 clock D1 (P0.06), data D0 (P0.08), e.g. with

@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# Rebuild the board from the upstream file with as little change to its copper
-# as the layout allows, then make the plates and the printout:
-#   1. place: every part goes where the layout puts it, dragging its copper;
-#   2. fit: copper the new edge crowds is nudged in (tools/edge_fit.py);
-#   3. trim: only copper off the board or in a clash upstream didn't have goes
-#      (tools/trim.py), so cut wires keep their stubs;
-#   4. route: what is open, around the surviving stock copper, which the router
-#      may not rip up ($KEEP_IDS) unless a connection is boxed in by it; then dead
-#      ends go and DRC is diffed with upstream's.
+# Rebuild the board from the upstream file, then make the plates and the printout:
+#   1. place: every part goes where the layout puts it;
+#   2. route: every wire drawn by rule from the key positions (tools/route.py),
+#      ground poured on both sides and stitched (tools/stitch.py);
+#   3. check: the build fails unless DRC finds nothing but the stock footprints'
+#      library notices and every connection is made.
 #   usage: build.sh [single|dual]
 #   single: SK8707-01 trackpoint at the right outer thumb key (pcb/, printout.pdf)
 #   dual:   trackpoints at both outer thumb keys (pcb/dual/, printout-dual.pdf)
@@ -21,15 +18,12 @@ case $VARIANT in
 esac
 dual() { [ "$VARIANT" = dual ]; }
 mkdir -p $B $OUT
-# The stock board without its lighting (tools/no_leds.py) is the base everything
-# is measured against.
+# The stock board without its lighting (tools/no_leds.py) is where placement starts.
 git show 59d1639:"pcb/corne choc.kicad_pcb" > $B/upstream.kicad_pcb
 bin/kpy tools/no_leds.py $B/upstream.kicad_pcb $B/upstream.kicad_pcb
 for b in upstream out; do git show 59d1639:"pcb/corne choc.kicad_pro" > $B/$b.kicad_pro; done   # DRC's rules
 python3 tools/make_footprints.py
 drc() { bin/kcli pcb drc --refill-zones --save-board --format json -o "$2" "$1" >/dev/null 2>&1 || true; }
-open_count() { python3 -c "import json;print(len(json.load(open('$1')).get('unconnected_items',[])))"; }
-drc $B/upstream.kicad_pcb $B/drc_up.json
 
 # 1. Place.
 export MOVED_OUT=$B/moved.txt NEW_EDGES=$B/new_edges.txt
@@ -44,60 +38,28 @@ for h in "${TPS[@]}"; do bin/kpy tools/outer_thumb.py $B/s.kicad_pcb $B/s.kicad_
 bin/kpy tools/strip.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/standoffs.py $B/s.kicad_pcb $B/s.kicad_pcb
 
-# 2. Fit, 3. trim.
+# 2. Route by rule, then pour and stitch the ground.
 cp $B/s.kicad_pcb $B/out.kicad_pcb
-bin/kpy tools/edge_fit.py $B/out.kicad_pcb
-for pass in 1 2 3 4; do
-  drc $B/out.kicad_pcb $B/drc.json
-  [ "$(bin/kpy tools/trim.py $B/out.kicad_pcb $B/drc.json $B/upstream.kicad_pcb $B/drc_up.json | tail -1)" = 0 ] && break
-done
-bin/kpy tools/ids.py $B/out.kicad_pcb | grep -E '^[0-9a-f-]{36}$' > $B/keep.txt
-export KEEP_IDS=$B/keep.txt
-
-# 4. Route. The sensor-to-driver links first (tools/tp_links.py: front out to a
-# via beside the driver, back across to its pad), while the board is emptiest.
-route() { bin/kpy tools/maze.py $B/out.kicad_pcb $B/out.kicad_pcb "$@"; }
-links() {
-  local vias
-  vias=$(bin/kpy tools/tp_links.py $B/out.kicad_pcb $1 $2 | grep '^S')
-  while read -r pad x y; do
-    # (one that doesn't fit is left to the general router below)
-    route TP_S${pad#S}$3 0.25 $1:$pad "$x,$y,F" || true
-    route TP_S${pad#S}$3 0.25 $2:$pad "$x,$y,B" || true
-  done <<<"$vias"
-}
-links A1 A2 ""
-dual && links A3 A4 _L
-connect() {
-  bin/kpy tools/autoconnect.py $B/out.kicad_pcb
-  # Strip every dead end DRC finds (each removal can expose the next).
-  for strip in 1 2 3 4 5 6 7 8 9 10; do
-    drc $B/out.kicad_pcb $B/drc.json
-    [ "$(bin/kpy tools/drop_dangling.py $B/out.kicad_pcb $B/drc.json | tail -1)" = 0 ] && break
-  done
-  return 0
-}
-for pass in 1 2 3 4; do
-  connect
-  [ "$(open_count $B/drc.json)" = 0 ] && break
-done
-# Last resort for a connection boxed in by stock copper: stock may be ripped up too.
-unset KEEP_IDS
-for pass in 1 2 3 4; do
-  [ "$(open_count $B/drc.json)" = 0 ] && break
-  connect
-done
-bin/kpy tools/solid_starved.py $B/out.kicad_pcb $B/drc.json
+bin/kpy tools/route.py $B/out.kicad_pcb $B/out.kicad_pcb
+bin/kpy tools/stitch.py $B/out.kicad_pcb >/dev/null
 bin/kpy tools/logo.py $B/out.kicad_pcb pcb             # the logo on the top silkscreen
 bin/kpy tools/quiet_silk.py $B/out.kicad_pcb            # no outlines round the jack, reset and OLED header
 # The commit this board is built from, printed on its back.
 git diff --quiet HEAD -- tools lib || { echo "commit the scripts first: the stamp must name the sources" >&2; exit 1; }
 bin/kpy tools/stamp.py $B/out.kicad_pcb "$(git rev-parse --short HEAD)"
-sed -i 's/(copper_finish "[^"]*")/(copper_finish "ENIG")/' $B/out.kicad_pcb   # as ordered (README)
+sed -i 's/(copper_finish "[^"]*")/(copper_finish "HASL")/' $B/out.kicad_pcb   # as ordered (README)
 bin/kcli pcb drc --refill-zones --save-board -o $B/drc.rpt $B/out.kicad_pcb >/dev/null 2>&1 || true
 drc $B/out.kicad_pcb $B/drc.json
-python3 tools/drcdiff.py $B/drc_up.json $B/drc.json
-bin/kpy tools/reuse.py $B/upstream.kicad_pcb $B/out.kicad_pcb
+# 3. Check.
+python3 - $B/drc.json <<'PY'
+import collections, json, sys
+d = json.load(open(sys.argv[1]))
+bad = [v for v in d["violations"] if v["type"] != "lib_footprint_issues"]
+for v in bad:
+    print(v["type"], v["description"], [i["description"] for i in v["items"]], file=sys.stderr)
+print("DRC:", dict(collections.Counter(v["type"] for v in d["violations"])), "unconnected:", len(d["unconnected_items"]))
+sys.exit(1 if bad or d["unconnected_items"] else 0)
+PY
 cp $B/out.kicad_pcb "$OUT/$NAME.kicad_pcb"
 
 tools/plates.sh $VARIANT

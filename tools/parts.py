@@ -21,7 +21,7 @@ def drag(board, footprints, move, turn=0.0, inside=None):
     Track ends and vias inside (a test on points, mm) move with them, as does a
     track end on one of the footprints' pads; a track crossing out stretches;
     other copper stays.
-    Copper the move leaves clashing is tools/trim.py's to clear."""
+    (The build clears all copper after placing and routes afresh, tools/route.py.)"""
     mm = lambda v: (pcbnew.ToMM(v.x), pcbnew.ToMM(v.y))
     V = lambda p: pcbnew.VECTOR2I(pcbnew.FromMM(p[0]), pcbnew.FromMM(p[1]))
     pads = [p for f in footprints for p in f.Pads()]

@@ -1,8 +1,7 @@
 """Free the nice!nano's high-frequency pins 1 and 2 (D1/D0) for the trackpoint
 (tools/outer_thumb.py): each controller's TRRS data line moves from pin 2 to
 pin 11 (D8; wired QMK on an RP2040 runs split serial on any pin, and a wireless
-build doesn't use the jack). The stock copper to pin 2 is cut by tools/trim.py
-and the line rerouted.
+build doesn't use the jack). The board is then routed afresh (tools/route.py).
 
 usage: pins.py IN OUT
 """
