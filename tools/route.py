@@ -11,9 +11,7 @@ import sys
 import pcbnew
 
 SRC, OUT = sys.argv[1:3]
-b = pcbnew.LoadBoard(SRC)
-for t in list(b.GetTracks()):            # whatever copper placement dragged along goes: all is drawn here
-    b.Remove(t)
+b = pcbnew.LoadBoard(SRC)                # bare of tracks (tools/clear_copper.py): every wire is drawn here
 MM = pcbnew.FromMM
 F, B = pcbnew.F_Cu, pcbnew.B_Cu
 W = 0.25                 # signal width

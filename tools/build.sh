@@ -40,6 +40,7 @@ bin/kpy tools/standoffs.py $B/s.kicad_pcb $B/s.kicad_pcb
 
 # 2. Route by rule, then pour and stitch the ground.
 cp $B/s.kicad_pcb $B/out.kicad_pcb
+bin/kpy tools/clear_copper.py $B/out.kicad_pcb
 bin/kpy tools/route.py $B/out.kicad_pcb $B/out.kicad_pcb
 bin/kpy tools/stitch.py $B/out.kicad_pcb >/dev/null
 bin/kpy tools/logo.py $B/out.kicad_pcb pcb             # the logo on the top silkscreen
