@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Export JLCPCB-style Gerber + drill zips for each board, and JLC's assembly files.
-#   usage: fab.sh [single|dual]   (single -> fab/, dual -> fab/dual/)
+#   usage: fab.sh [single|dual|none]   (single -> fab/, dual -> fab/dual/, none -> fab/none/)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VARIANT=${1:-single}
 case $VARIANT in
   single) F=fab;      P=pcb;      NAME="petrock-41" ;;
   dual)   F=fab/dual; P=pcb/dual; NAME="petrock-40" ;;
+  none)   F=fab/none; P=pcb/none; NAME="petrock-42" ;;
   *) echo "unknown variant $VARIANT" >&2; exit 1 ;;
 esac
 mkdir -p $F
@@ -22,7 +23,7 @@ export_board() {  # name board
   echo "$F/$1.zip: $(unzip -l "$F/$1.zip" | tail -1)"
 }
 export_board pcb "$P/$NAME.kicad_pcb"
-if [ "$VARIANT" = dual ]; then
+if [ "$VARIANT" != single ]; then
   export_board plate "$P/$NAME plate.kicad_pcb"                 # one design, both halves (flip it for the left)
 else
   export_board plate-left "$P/$NAME plate.kicad_pcb"            # drawn as a right half; flip it

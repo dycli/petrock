@@ -92,7 +92,8 @@ for f in list(b.GetFootprints()):
     d.SetPosition(pcbnew.VECTOR2I(MM(x), MM(y)))
     d.SetOrientationDegrees(90 + f.GetOrientationDegrees())
 
-DUAL = any(f.GetReference() == "A4" for f in b.GetFootprints())   # the 40: a trackpoint on the left too
+DUAL = any(f.GetReference() == "A4" for f in b.GetFootprints())   # a trackpoint on the left (the 40)
+RTP = any(f.GetReference() == "A2" for f in b.GetFootprints())    # a trackpoint on the right (the 40 and 41)
 
 # ---- the key matrix of the left half ------------------------------------
 # Main keys: socket unrotated, diode to its left. Columns by x, rows by y.
@@ -467,6 +468,8 @@ for f in b.GetFootprints():
     r = f.GetReference()
     if r.startswith("SW") and f.GetOrientationDegrees() == 0 and pcbnew.ToMM(f.GetPosition().x) > 155:
         rk[r] = (pcbnew.ToMM(f.GetPosition().x), pcbnew.ToMM(f.GetPosition().y))
+rxs = [round(x, 2) for x, _ in rk.values()]
+rk = {r: p for r, p in rk.items() if rxs.count(round(p[0], 2)) >= 3}   # the 42's extra thumb has no column
 rcols = sorted({round(x, 2) for x, _ in rk.values()}, reverse=True)     # pinky (outer) first
 rgrid = {}
 for r, (x, y) in rk.items():
@@ -554,18 +557,27 @@ for c in range(ncol):
     track(n, F, [(vx, vy), (vx, run - 1), (vx - 1, run), (up + 0.4, run), (up, run - 0.4), (up, py + 0.6), (up + 0.6, py), (px, py)])
 
 # Right thumbs: the middle, index and inner columns run on to the outer,
-# middle and inner thumb, as on the left.
-for r, c in (("SW41", 2), ("SW42", 3), ("SW44", 4)):
+# middle and inner thumb, as on the left; on the 42 the extra outermost thumb
+# (in the trackpoint's place) takes the middle column and the innermost keeps col 0.
+RTHUMBS = ("SW41", "SW42", "SW44") if RTP else ("SW40", "SW41", "SW42")
+for r, c in zip(RTHUMBS, (2, 3, 4)):
     for p in fp(r).Pads():
         if p.GetNumber() == "1":
             p.SetNet(net(rmain[(c, 0)], "1"))
-RL = {r: local(r) for r in ("SW22", "SW34", "SW41", "SW42", "SW44")}
+RL = {r: local(r) for r in ("SW22", "SW34", "SW41", "SW42", "SW44") + (() if RTP else ("SW40",))}
 n3r = b.FindNet("row3_r")
 s34 = RL["SW34"](-7, ROW_DY)
 s22 = RL["SW22"](-7, 0)[0], s34[1]       # the pinky's link stops level with the ring key: no step
 p41, u41 = along(RL["SW41"], (-7, ROW_DY), (-7, ROW_DY + 1))
 low41 = meet(p41, u41, (0, UNDER), (1, 0))
-track(n3r, B, [s22, s34, (s34[0] - (UNDER - s34[1]), UNDER), low41, p41])
+if RTP:
+    track(n3r, B, [s22, s34, (s34[0] - (UNDER - s34[1]), UNDER), low41, p41])
+else:
+    # On through the extra thumb's diode, then under the next thumb to its diode line.
+    s40 = RL["SW40"](-7, ROW_DY)
+    g40 = (rcols[1] + pcbnew.ToMM(fp("SW40").GetPosition().x)) / 2   # mid-gap between the ring key and the extra thumb
+    h40 = abs(s40[1] - s34[1]) / 2
+    track(n3r, B, [s22, s34, (g40 + h40, s34[1]), (g40 - h40, s40[1]), s40, (s40[0] - (UNDER - s40[1]), UNDER), low41, p41])
 for r in RL:
     diode_links(r, s22 if r == "SW22" else None)
 q42, v42 = along(RL["SW42"], (-7, ROW_DY), (0, ROW_DY))
@@ -580,25 +592,43 @@ up3 = px - 2.05
 track(n3r, B, [s44, meet(p44, w44, (up3, 0), (0, 1)), (up3, py + 1), (up3 + 1, py), (px, py)])
 # Thumb columns on the front.
 n3c, n4c, n5c = (net(rmain[(c, 0)], "1") for c in (2, 3, 4))
-x3 = rcols[2] + COL_DX
-c41, w41 = along(RL["SW41"], (COL_DX, -3.75), (COL_DX, -2.75))
-track(n3c, F, [(x3, pad("SW37", "1", tht=True)[1]), (x3, y3 - 1), (x3 - 1, y3), meet(c41, w41, (0, y3), (1, 0)), c41])
-x4 = rcols[3] + COL_DX
-y4r = 102.9                                  # above the sensor's links
-p42 = pad("SW42", "1", tht=True)
+x3, x4, x5 = rcols[2] + COL_DX, rcols[3] + COL_DX, rcols[4] + COL_DX
+y4r, y5r = 102.9, 102.3                      # above the sensor's links; under the inner keys
 xd = 186.3                                   # beside the standoff
-track(n4c, F, [(x4, pad("SW38", "1", tht=True)[1]), (x4, y4r - 1), (x4 - 1, y4r), (xd + 1, y4r), (xd, y4r + 1),
-               (xd, p42[1] - (xd - p42[0])), p42])
-x5 = rcols[4] + COL_DX
-y5r = 102.3
-p44t = pad("SW44", "1", tht=True)
-track(n5c, F, [(x5, pad("SW39", "1", tht=True)[1]), (x5, y5r - 1), (x5 - 1, y5r), (p44t[0] + 1, y5r), (p44t[0], y5r + 1), p44t])
+c41, w41 = along(RL["SW41"], (COL_DX, -3.75), (COL_DX, -2.75))
+p42 = pad("SW42", "1", tht=True)
+if RTP:
+    track(n3c, F, [(x3, pad("SW37", "1", tht=True)[1]), (x3, y3 - 1), (x3 - 1, y3), meet(c41, w41, (0, y3), (1, 0)), c41])
+    track(n4c, F, [(x4, pad("SW38", "1", tht=True)[1]), (x4, y4r - 1), (x4 - 1, y4r), (xd + 1, y4r), (xd, y4r + 1),
+                   (xd, p42[1] - (xd - p42[0])), p42])
+    p44t = pad("SW44", "1", tht=True)
+    track(n5c, F, [(x5, pad("SW39", "1", tht=True)[1]), (x5, y5r - 1), (x5 - 1, y5r), (p44t[0] + 1, y5r), (p44t[0], y5r + 1), p44t])
+else:
+    # The 42. Middle column: one diagonal on to the extra thumb's column line.
+    c40 = RL["SW40"](COL_DX, -3.75)
+    d3 = c40[1] - 3.0
+    track(n3c, F, [(x3, pad("SW37", "1", tht=True)[1]), (x3, d3 - (x3 - c40[0])), (c40[0], d3), c40])
+    # Index column: under the inner keys' row 2, then down the outer thumb's column line.
+    x0 = 203.5
+    track(n4c, F, [(x4, pad("SW38", "1", tht=True)[1]), (x4, y4r - 1), (x4 - 1, y4r), (x0, y4r),
+                   meet((x0, y4r), (-1, 1), c41, w41), c41])
+    # Inner column: under the inner keys, beside the standoff and down to the middle thumb.
+    track(n5c, F, [(x5, pad("SW39", "1", tht=True)[1]), (x5, y5r - 1), (x5 - 1, y5r), (xd + 1, y5r), (xd, y5r + 1),
+                   (xd, p42[1] - (xd - p42[0])), p42])
+    # The innermost thumb keeps column 0: under the screen header and up the
+    # controller's outer side, west of the column fan, into its far pin.
+    p44t = pad("SW44", "1", tht=True)
+    c0 = pin_of(net("SW44", "1").GetNetname())
+    xo, yo = FAR - 4.58, 98.9
+    track(net("SW44", "1"), F, [p44t, (p44t[0], yo + 1), (p44t[0] - 1, yo), (xo + 1, yo), (xo, yo - 1),
+                                (xo, c0[1] + 1), (xo + 1, c0[1]), c0])
 # Screen: on the back, straight up from its header into the near pins.
 for name, num in (("SDA_r", "1"), ("SCL_r", "2")):
     hx, hy = pad("J4", num)
     px, py = pin_of(name)
     track(net("J4", num), B, [(hx, hy), (hx, py + 1), (hx + 1, py), (px, py)])
-sensor_links("A1", "A2")
+if RTP:
+    sensor_links("A1", "A2")
 # Trackpoint data/clock and power: west out of the driver on the back, up the
 # lane between the index and middle columns, along the top edge to the controller.
 topr = edge_line(160, 220)
@@ -606,7 +636,7 @@ lane = {"TP_DATA": 221.6, "TP_CLK": 222.25, "VDD": 222.9}
 west = {"VDD": 209.0, "TP_CLK": 208.35, "TP_DATA": 207.7}
 turn = {"TP_DATA": 101.3, "TP_CLK": 101.95, "VDD": 102.6}
 edge_off = {"VDD": 1.0, "TP_CLK": 1.65, "TP_DATA": 2.3}
-for name in ("TP_DATA", "TP_CLK", "VDD"):
+for name in ("TP_DATA", "TP_CLK", "VDD") if RTP else ():
     p = next(q for q in fp("A2").Pads() if q.GetNetname() == name)
     hx, hy = pcbnew.ToMM(p.GetPosition().x), pcbnew.ToMM(p.GetPosition().y)
     n = p.GetNet()
@@ -626,6 +656,9 @@ for name in ("TP_DATA", "TP_CLK", "VDD"):
         pp = pin_of(name)
         pts += [meet((x_drop, 0), (0, 1), q, u), (x_drop, pp[1] - 1), (x_drop - 1, pp[1]), pp]
         track(n, F, pts)
+if not RTP:                                  # no trackpoint: the controller's power just goes to the jack
+    pv = pin_of("VDD")
+    track(next(p for p in fp("U2").Pads() if p.GetNetname() == "VDD").GetNet(), F, [pv, (pad("J3", "D")[0], pv[1])])
 # Screen power: on the back, under its header and up the outer edge to the jack.
 j3, jd = pad("J4", "3"), pad("J3", "D")
 track(net("J4", "3"), B, [j3, (j3[0], 98.6), (159.7, 98.6), (158.7, 97.6), (158.7, 72.2), (159.7, 71.2), (jd[0], 71.2)])
@@ -638,10 +671,11 @@ track(net("J3", "B"), F, [pdx, (178.0, pdx[1]), (178.0, 63.4), (177.0, 62.4), (1
 via(net("J3", "B"), (169.0, 62.4))
 track(net("J3", "B"), B, [(169.0, 62.4), (jb[0], 62.4), jb])
 
-dg = next(p for p in fp("A2").Pads() if p.GetNumber() == "1")
-dgp = (pcbnew.ToMM(dg.GetPosition().x), pcbnew.ToMM(dg.GetPosition().y))
-track(dg.GetNet(), B, [dgp, (dgp[0] - 0.74, dgp[1] + 1.65)], 0.5)
-via(dg.GetNet(), (dgp[0] - 0.74, dgp[1] + 1.65))
+if RTP:
+    dg = next(p for p in fp("A2").Pads() if p.GetNumber() == "1")
+    dgp = (pcbnew.ToMM(dg.GetPosition().x), pcbnew.ToMM(dg.GetPosition().y))
+    track(dg.GetNet(), B, [dgp, (dgp[0] - 0.74, dgp[1] + 1.65)], 0.5)
+    via(dg.GetNet(), (dgp[0] - 0.74, dgp[1] + 1.65))
 # The screen header's ground pin: a short link south into open pour.
 g4 = pad("J4", "4")
 track(net("J4", "4"), B, [g4, (g4[0], g4[1] + 2.5)], 0.5)

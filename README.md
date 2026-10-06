@@ -1,8 +1,8 @@
 # Petrock
 
-A split 41- or 40-key choc keyboard with a trackpoint in place of an outer
-thumb key: **Petrock-41** has one, at the right thumb; **Petrock-40** has one on
-each half.
+A split choc keyboard with a trackpoint in place of an outer thumb key:
+**Petrock-41** has one, at the right thumb; **Petrock-40** has one on each half;
+**Petrock-42** has none, a key at both outer thumbs.
 
 Based on holykeebs' Corne Choc PCB and plate from
 [idank/keyboards](https://github.com/idank/keyboards) (`corne/choc`, commit
@@ -59,13 +59,13 @@ connections stay, apart from the thumbs' columns (see Firmware).
   equally far from its three keycap corners. A key diode may move a fraction to
   make room, if it stays clear. The switch plate has a screw hole over each
   (`tools/plate.py`), as stock.
-- Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40)
-  has an opening for the trackpoint sensor; a new FR4 bottom plate fits the
+- Plates regenerated (`tools/plate.py`): the right one (both, on Petrock-40;
+  neither, on Petrock-42) has an opening for the trackpoint sensor; a new FR4 bottom plate fits the
   outline.
 
 ## Build
 
-`tools/build.sh [single|dual]` regenerates a board from the stock file:
+`tools/build.sh [single|dual|none]` regenerates a board from the stock file:
 
 1. **Place:** strip the lighting, then move every part to the layout
    (`tools/parts.py drag`).
@@ -87,12 +87,13 @@ which choc switches clip into; the main board and bottom plate at 1.6 mm; all
 in HASL, the cheapest finish: the trackpoint driver's pads are hand-soldered
 and wide enough that ENIG's flatness isn't needed)
 and the 1:1 printout (print it with
-scaling off, e.g. `lp -o print-scaling=none`). `tools/fab.sh [single|dual]`
+scaling off, e.g. `lp -o print-scaling=none`). `tools/fab.sh [single|dual|none]`
 writes Gerber and drill zips and JLC's assembly BOM and placement (diodes and
 hot-swap sockets) to `fab/`; `tools/demo.sh` renders `demo/`. All need KiCad 10.
 
 Outputs: `pcb/petrock-41*.kicad_pcb` and `pcb/bottom.kicad_pcb`;
-`pcb/dual/petrock-40*.kicad_pcb` and `pcb/dual/bottom.kicad_pcb`.
+`pcb/dual/petrock-40*.kicad_pcb` and `pcb/dual/bottom.kicad_pcb`;
+`pcb/none/petrock-42*.kicad_pcb` and `pcb/none/bottom.kicad_pcb`.
 
 ## Assembly
 
@@ -122,9 +123,9 @@ plate, pins in the hot-swap sockets), 1.0 mm under the plate.
 - Matrix (each half, right with `_r` nets): rows 0-2 are the three full rows,
   columns 1-5 pinky to inner index. Row 3 is the bottom pinky key (col 1), the
   bottom ring key (col 2) and the thumbs, outer to inner: col 3, col 4, col 5.
-  Col 0 is unused, except on the 41's left half, which has four thumbs: there
-  the extra outermost one (in the trackpoint's place) is col 3, the next two
-  col 4 and col 5, and the innermost col 0.
+  Col 0 is unused, except on a half with four thumbs (the 41's left, both of
+  the 42's): there the extra outermost one (in the trackpoint's place) is col
+  3, the next two col 4 and col 5, and the innermost col 0.
 - Wired (QMK, RP2040 Pro Micro): split serial on pin 11 (`SOFT_SERIAL_PIN GP8`,
   PIO driver); PS/2 `PS2_CLOCK_PIN GP0`, `PS2_DATA_PIN GP1` (PIO driver).
 - Wireless (ZMK, nice!nano): PS/2 clock D1 (P0.06), data D0 (P0.08), e.g. with

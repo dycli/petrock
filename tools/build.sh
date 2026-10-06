@@ -5,15 +5,17 @@
 #      ground poured on both sides and stitched (tools/stitch.py);
 #   3. check: the build fails unless DRC finds nothing but the stock footprints'
 #      library notices and every connection is made.
-#   usage: build.sh [single|dual]
+#   usage: build.sh [single|dual|none]
 #   single: SK8707-01 trackpoint at the right outer thumb key (pcb/, printout.pdf)
 #   dual:   trackpoints at both outer thumb keys (pcb/dual/, printout-dual.pdf)
+#   none:   no trackpoints, a key at both outer thumbs (pcb/none/, printout-none.pdf)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VARIANT=${1:-single}
 case $VARIANT in
   single) B=build;      OUT=pcb;      NAME="petrock-41";      TPS=(right);      PRINT=printout ;;
   dual)   B=build/dual; OUT=pcb/dual; NAME="petrock-40";      TPS=(right left); PRINT=printout-dual ;;
+  none)   B=build/none; OUT=pcb/none; NAME="petrock-42";      TPS=();           PRINT=printout-none ;;
   *) echo "unknown variant $VARIANT" >&2; exit 1 ;;
 esac
 dual() { [ "$VARIANT" = dual ]; }
@@ -34,7 +36,7 @@ bin/kpy tools/widen.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/outline.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/inner_strip.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/split_thumbs.py $B/s.kicad_pcb $B/s.kicad_pcb
-for h in "${TPS[@]}"; do bin/kpy tools/outer_thumb.py $B/s.kicad_pcb $B/s.kicad_pcb $h; done
+for h in ${TPS[@]+"${TPS[@]}"}; do bin/kpy tools/outer_thumb.py $B/s.kicad_pcb $B/s.kicad_pcb $h; done
 bin/kpy tools/strip.py $B/s.kicad_pcb $B/s.kicad_pcb
 bin/kpy tools/standoffs.py $B/s.kicad_pcb $B/s.kicad_pcb
 

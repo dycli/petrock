@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
 # Switch plates, bottom plate and printout for a built board (tools/build.sh).
-#   usage: plates.sh [single|dual]
+#   usage: plates.sh [single|dual|none]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VARIANT=${1:-single}
 case $VARIANT in
   single) B=build;      OUT=pcb;      NAME="petrock-41";      PRINT=printout ;;
   dual)   B=build/dual; OUT=pcb/dual; NAME="petrock-40";      PRINT=printout-dual ;;
+  none)   B=build/none; OUT=pcb/none; NAME="petrock-42";      PRINT=printout-none ;;
   *) echo "unknown variant $VARIANT" >&2; exit 1 ;;
 esac
 dual() { [ "$VARIANT" = dual ]; }
 
 # Switch plates and bottom plate. Single: the left plate is the right-half design
 # flipped, the right one also clears the trackpoint sensor. Dual: one design with
-# the sensor opening, flipped for the left half.
+# the sensor opening, flipped for the left half. None: one plain design, flipped
+# for the left half.
 PRO="pcb/petrock-41 plate.kicad_pro"
 git show 59d1639:"pcb/corne choc plate.kicad_pcb" > $B/plate_up.kicad_pcb
 bin/kpy tools/strip.py $B/plate_up.kicad_pcb $B/plate_up.kicad_pcb
 if dual; then
   bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb $B/plate_plain.kicad_pcb "$OUT/$NAME plate.kicad_pcb"
+  PLATES=("$OUT/$NAME plate.kicad_pcb")
+elif [ "$VARIANT" = none ]; then
+  bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb "$OUT/$NAME plate.kicad_pcb" $B/plate_tp.kicad_pcb
   PLATES=("$OUT/$NAME plate.kicad_pcb")
 else
   bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb "$OUT/$NAME plate.kicad_pcb" "$OUT/$NAME plate right.kicad_pcb"
