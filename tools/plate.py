@@ -166,7 +166,10 @@ def main(stock, pcb_path, dst, dst_tp):
     edge(board, plate)
     for n, at in enumerate(sorted(standoffs), 1):
         screw_hole(board, n, at)
-    tp_hole = hole(len(keys) + 1, *tp_key)
+    # The trackpoint's key gets a switch hole too (the plain plate, for the other
+    # half), unless the board has a real key there already (the 42).
+    have = any(abs(at[0] - tp_key[0][0]) < 0.1 and abs(at[1] - tp_key[0][1]) < 0.1 for at, _ in keys)
+    tp_hole = None if have else hole(len(keys) + 1, *tp_key)
     board.Save(dst)
     if dst_tp:
         # The trackpoint copy: the sensor stands taller than the gap under the
