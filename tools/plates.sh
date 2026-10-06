@@ -23,7 +23,7 @@ if dual; then
   bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb $B/plate_plain.kicad_pcb "$OUT/$NAME plate.kicad_pcb"
   PLATES=("$OUT/$NAME plate.kicad_pcb")
 elif [ "$VARIANT" = none ]; then
-  bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb "$OUT/$NAME plate.kicad_pcb" $B/plate_tp.kicad_pcb
+  bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb "$OUT/$NAME plate.kicad_pcb"   # plain: no sensor opening
   PLATES=("$OUT/$NAME plate.kicad_pcb")
 else
   bin/kpy tools/plate.py $B/plate_up.kicad_pcb $B/out.kicad_pcb "$OUT/$NAME plate.kicad_pcb" "$OUT/$NAME plate right.kicad_pcb"
